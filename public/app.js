@@ -134,7 +134,7 @@ class DriverApp {
                     <h2 id="auth-title">${this.translator.t('driverLogin')}</h2>
 
                     <form id="login-form" class="auth-form">
-                        <input type="email" id="login-email" placeholder="${this.translator.t('email')}" required>
+                        <input type="text" id="login-identifier" placeholder="${this.translator.t('phoneOrEmail')}" required>
                         <input type="password" id="login-password" placeholder="${this.translator.t('password')}" required>
                         <button type="submit" class="auth-btn">${this.translator.t('login')}</button>
                         <p class="auth-toggle">
@@ -237,14 +237,14 @@ class DriverApp {
 
     async handleLogin(e) {
         e.preventDefault();
-        const email = document.getElementById('login-email').value;
+        const identifier = document.getElementById('login-identifier').value;
         const password = document.getElementById('login-password').value;
 
         try {
             const response = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ identifier, password })
             });
 
             const data = await response.json();

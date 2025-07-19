@@ -1,4 +1,3 @@
-
 // Translation system for Driver Log App
 class TranslationManager {
     constructor() {
@@ -9,18 +8,19 @@ class TranslationManager {
                 appTitle: "Driver Log & Payment App",
                 driverDashboard: "Driver Dashboard",
                 adminPanel: "Admin Panel",
-                
+
                 // System Status
                 systemStatus: "System Status",
                 checking: "Checking...",
                 serverHealthy: "🚗 Driver Log App Server is running!",
                 serverError: "Server connection failed",
-                
+
                 // Authentication
                 driverLogin: "Driver Login",
                 driverRegistration: "Driver Registration",
-                email: "Email",
                 phone: "Phone Number",
+                email: "Email",
+                phoneOrEmail: "Phone Number or Email",
                 password: "Password",
                 fullName: "Full Name",
                 login: "Login",
@@ -30,14 +30,14 @@ class TranslationManager {
                 registerHere: "Register here",
                 alreadyHaveAccount: "Already have an account?",
                 loginHere: "Login here",
-                
+
                 // Phone Verification
                 phoneVerification: "Phone Verification",
                 enterVerificationCode: "Please enter the verification code sent to your phone.",
                 verificationCode: "Verification Code",
                 verify: "Verify",
                 resendCode: "Resend Code",
-                
+
                 // Dashboard
                 welcome: "Welcome",
                 shiftStatus: "Shift Status",
@@ -46,13 +46,13 @@ class TranslationManager {
                 readyForNewShift: "Ready to start a new shift",
                 started: "Started",
                 startOdometer: "Start Odometer",
-                
+
                 // Quick Actions
                 quickActions: "Quick Actions",
                 startShift: "Start Shift",
                 endShift: "End Shift",
                 viewTodaysShifts: "View Today's Shifts",
-                
+
                 // Forms
                 startNewShift: "Start New Shift",
                 endCurrentShift: "End Current Shift",
@@ -61,7 +61,7 @@ class TranslationManager {
                 clockIn: "Clock In",
                 clockOut: "Clock Out",
                 cancel: "Cancel",
-                
+
                 // Shifts Display
                 todaysShifts: "Today's Shifts",
                 shift: "Shift",
@@ -73,7 +73,7 @@ class TranslationManager {
                 km: "km",
                 currentlyActive: "Currently Active",
                 noShiftsToday: "No shifts recorded for today.",
-                
+
                 // Messages
                 loginSuccessful: "Login successful!",
                 registrationSuccessful: "Registration successful! Please login.",
@@ -82,11 +82,11 @@ class TranslationManager {
                 clockedInSuccessfully: "Clocked in successfully!",
                 clockedOutSuccessfully: "Clocked out successfully!",
                 verificationCodeSent: "New verification code sent!",
-                
+
                 // Field requirements
                 optional: "Optional",
                 fieldsMarkedRequired: "* Fields marked with asterisk are required",
-                
+
                 // Errors
                 phoneEmailPasswordRequired: "Phone/Email and password required",
                 namePhoneRequired: "Name and phone number required",
@@ -111,18 +111,19 @@ class TranslationManager {
                 appTitle: "ஓட்டுநர் பதிவு மற்றும் கட்டண செயலி",
                 driverDashboard: "ஓட்டுநர் கட்டுப்பாட்டு பலகை",
                 adminPanel: "நிர்வாக பலகை",
-                
+
                 // System Status
                 systemStatus: "கணினி நிலை",
                 checking: "சரிபார்க்கிறது...",
                 serverHealthy: "🚗 ஓட்டுநர் பதிவு செயலி இயங்குகிறது!",
                 serverError: "சர்வர் இணைப்பு தோல்வியடைந்தது",
-                
+
                 // Authentication
                 driverLogin: "ஓட்டுநர் உள்நுழைவு",
                 driverRegistration: "ஓட்டுநர் பதிவு",
-                email: "மின்னஞ்சல்",
                 phone: "தொலைபேசி எண்",
+                email: "மின்னஞ்சல்",
+                phoneOrEmail: "தொலைபேசி எண் அல்லது மின்னஞ்சல்",
                 password: "கடவுச்சொல்",
                 fullName: "முழு பெயர்",
                 login: "உள்நுழைவு",
@@ -132,14 +133,14 @@ class TranslationManager {
                 registerHere: "இங்கே பதிவு செய்யுங்கள்",
                 alreadyHaveAccount: "ஏற்கனவே கணக்கு உள்ளதா?",
                 loginHere: "இங்கே உள்நுழையுங்கள்",
-                
+
                 // Phone Verification
                 phoneVerification: "தொலைபேசி சரிபார்ப்பு",
                 enterVerificationCode: "உங்கள் தொலைபேசிக்கு அனுப்பப்பட்ட சரிபார்ப்பு குறியீட்டை உள்ளிடவும்.",
                 verificationCode: "சரிபார்ப்பு குறியீடு",
                 verify: "சரிபார்க்கவும்",
                 resendCode: "குறியீட்டை மீண்டும் அனுப்பவும்",
-                
+
                 // Dashboard
                 welcome: "வரவேற்கிறோம்",
                 shiftStatus: "ஷிஃப்ட் நிலை",
@@ -148,13 +149,13 @@ class TranslationManager {
                 readyForNewShift: "புதிய ஷிஃப்ட் தொடங்க தயார்",
                 started: "தொடங்கியது",
                 startOdometer: "தொடக்க ஓடோமீட்டர்",
-                
+
                 // Quick Actions
                 quickActions: "விரைவு செயல்கள்",
                 startShift: "ஷிஃப்ட் தொடங்கு",
                 endShift: "ஷிஃப்ட் முடிக்கவும்",
                 viewTodaysShifts: "இன்றைய ஷிஃப்ட்களைப் பார்க்கவும்",
-                
+
                 // Forms
                 startNewShift: "புதிய ஷிஃப்ட் தொடங்கவும்",
                 endCurrentShift: "தற்போதைய ஷிஃப்ட் முடிக்கவும்",
@@ -163,7 +164,7 @@ class TranslationManager {
                 clockIn: "கடிகாரத்தில் உள்நுழைவு",
                 clockOut: "கடிகாரத்தில் வெளியேற்றம்",
                 cancel: "ரத்து செய்யவும்",
-                
+
                 // Shifts Display
                 todaysShifts: "இன்றைய ஷிஃப்ட்கள்",
                 shift: "ஷிஃப்ட்",
@@ -175,11 +176,11 @@ class TranslationManager {
                 km: "கி.மீ",
                 currentlyActive: "தற்போது செயலில்",
                 noShiftsToday: "இன்றைக்கு ஷிஃப்ட்கள் பதிவு செய்யப்படவில்லை.",
-                
+
                 // Field requirements
                 optional: "விருப்பமான",
                 fieldsMarkedRequired: "* நட்சத்திரம் குறிக்கப்பட்ட புலங்கள் தேவை",
-                
+
                 // Messages
                 loginSuccessful: "உள்நுழைவு வெற்றிகரமாக!",
                 registrationSuccessful: "பதிவு வெற்றிகரமாக! தயவுசெய்து உள்நுழையுங்கள்.",
@@ -188,7 +189,7 @@ class TranslationManager {
                 clockedInSuccessfully: "வெற்றிகரமாக கடிகாரத்தில் நுழைந்தது!",
                 clockedOutSuccessfully: "வெற்றிகரமாக கடிகாரத்தில் இருந்து வெளியேறியது!",
                 verificationCodeSent: "புதிய சரிபார்ப்பு குறியீடு அனுப்பப்பட்டது!",
-                
+
                 // Errors
                 phoneEmailPasswordRequired: "தொலைபேசி/மின்னஞ்சல் மற்றும் கடவுச்சொல் தேவை",
                 namePhoneRequired: "பெயர் மற்றும் தொலைபேசி எண் தேவை",
