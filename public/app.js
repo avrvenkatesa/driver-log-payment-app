@@ -465,8 +465,6 @@ class DriverApp {
                             </div>
                             `;
                         }).join('')}
-                            </div>
-                        `).join('')}
                     </div>
                 `;
             } else {
