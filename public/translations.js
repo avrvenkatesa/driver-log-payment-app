@@ -18,6 +18,7 @@ class TranslationManager {
                 // Authentication
                 driverLogin: "Driver Login",
                 driverRegistration: "Driver Registration",
+                userId: "User ID",
                 phone: "Phone Number",
                 email: "Email",
                 phoneOrEmail: "Phone Number or Email",
@@ -119,20 +120,21 @@ class TranslationManager {
                 serverError: "சர்வர் இணைப்பு தோல்வியடைந்தது",
 
                 // Authentication
-                driverLogin: "ஓட்டுநர் உள்நுழைவு",
-                driverRegistration: "ஓட்டுநர் பதிவு",
+                driverLogin: "டிரைவர் உள்நுழைவு",
+                driverRegistration: "டிரைவர் பதிவு",
+                userId: "பயனர் ஐடி",
                 phone: "தொலைபேசி எண்",
                 email: "மின்னஞ்சல்",
                 phoneOrEmail: "தொலைபேசி எண் அல்லது மின்னஞ்சல்",
                 password: "கடவுச்சொல்",
                 fullName: "முழு பெயர்",
                 login: "உள்நுழைவு",
-                register: "பதிவு செய்க",
+                register: "பதிவு செய்யவும்",
                 logout: "வெளியேறு",
                 dontHaveAccount: "கணக்கு இல்லையா?",
-                registerHere: "இங்கே பதிவு செய்யுங்கள்",
+                registerHere: "இங்கே பதிவு செய்யவும்",
                 alreadyHaveAccount: "ஏற்கனவே கணக்கு உள்ளதா?",
-                loginHere: "இங்கே உள்நுழையுங்கள்",
+                loginHere: "இங்கே உள்நுழையவும்",
 
                 // Phone Verification
                 phoneVerification: "தொலைபேசி சரிபார்ப்பு",

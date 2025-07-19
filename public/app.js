@@ -34,7 +34,7 @@ class DriverApp {
         document.getElementById('app-title').textContent = this.translator.t('appTitle');
         document.getElementById('driver-tab').textContent = this.translator.t('driverDashboard');
         document.getElementById('admin-tab').textContent = this.translator.t('adminPanel');
-        
+
         // Update health status if visible
         const healthStatus = document.getElementById('health-status');
         if (healthStatus && healthStatus.textContent.includes('running')) {
@@ -63,8 +63,6 @@ class DriverApp {
         // Auth forms
         document.getElementById('login-form')?.addEventListener('submit', this.handleLogin.bind(this));
         document.getElementById('register-form')?.addEventListener('submit', this.handleRegister.bind(this));
-        document.getElementById('verify-form')?.addEventListener('submit', this.handleVerification.bind(this));
-        document.getElementById('resend-code')?.addEventListener('click', this.resendVerificationCode.bind(this));
         document.getElementById('show-register')?.addEventListener('click', (e) => {
             e.preventDefault();
             this.toggleAuthMode();
@@ -145,19 +143,19 @@ class DriverApp {
 
                     <form id="register-form" class="auth-form">
                         <div class="field-group">
-                            <label class="field-label required">${this.translator.t('fullName')} *</label>
+                            <label class="field-label required">*${this.translator.t('fullName')}</label>
                             <input type="text" id="register-name" placeholder="${this.translator.t('fullName')}" required>
                         </div>
                         <div class="field-group">
-                            <label class="field-label required">${this.translator.t('phone')} *</label>
-                            <input type="tel" id="register-phone" placeholder="${this.translator.t('phone')}" required>
+                            <label class="field-label required">*${this.translator.t('userId')}</label>
+                            <input type="text" id="register-phone" placeholder="${this.translator.t('userId')}" required>
                         </div>
                         <div class="field-group">
                             <label class="field-label optional">${this.translator.t('email')} (${this.translator.t('optional')})</label>
                             <input type="email" id="register-email" placeholder="${this.translator.t('email')}">
                         </div>
                         <div class="field-group">
-                            <label class="field-label required">${this.translator.t('password')} *</label>
+                            <label class="field-label required">*${this.translator.t('password')}</label>
                             <input type="password" id="register-password" placeholder="${this.translator.t('password')}" required>
                         </div>
                         <div class="field-requirements">
@@ -168,14 +166,6 @@ class DriverApp {
                             ${this.translator.t('alreadyHaveAccount')} 
                             <a href="#" id="show-login">${this.translator.t('loginHere')}</a>
                         </p>
-                    </form>
-
-                    <form id="verify-form" class="auth-form hidden">
-                        <p>${this.translator.t('enterVerificationCode')}</p>
-                        <input type="tel" id="verify-phone" placeholder="${this.translator.t('phone')}" readonly>
-                        <input type="text" id="verify-code" placeholder="${this.translator.t('verificationCode')}" required>
-                        <button type="submit" class="auth-btn">${this.translator.t('verify')}</button>
-                        <button type="button" id="resend-code" class="cancel-btn">${this.translator.t('resendCode')}</button>
                     </form>
 
                 </div>
@@ -220,17 +210,14 @@ class DriverApp {
         const loginForm = document.getElementById('login-form');
         const registerForm = document.getElementById('register-form');
         const authTitle = document.getElementById('auth-title');
-        const verifyForm = document.getElementById('verify-form');
 
         if (loginForm.classList.contains('hidden')) {
             loginForm.classList.remove('hidden');
             registerForm.classList.add('hidden');
-            verifyForm.classList.add('hidden');
             authTitle.textContent = this.translator.t('driverLogin');
         } else {
             loginForm.classList.add('hidden');
             registerForm.classList.remove('hidden');
-            verifyForm.classList.add('hidden');
             authTitle.textContent = this.translator.t('driverRegistration');
         }
     }
@@ -279,11 +266,7 @@ class DriverApp {
 
             const data = await response.json();
 
-            if (response.ok && data.requiresVerification) {
-                this.pendingPhone = phone;
-                this.showVerificationForm();
-                this.showMessage(this.translator.t('registrationWithVerification'), 'success');
-            } else if (response.ok) {
+            if (response.ok) {
                 this.showMessage(this.translator.t('registrationSuccessful'), 'success');
                 this.toggleAuthMode();
             } else {
@@ -291,63 +274,6 @@ class DriverApp {
             }
         } catch (error) {
             this.showMessage(this.translator.t('registrationFailed'), 'error');
-        }
-    }
-
-    showVerificationForm() {
-        const registerForm = document.getElementById('register-form');
-        const verifyForm = document.getElementById('verify-form');
-
-        registerForm.classList.add('hidden');
-        verifyForm.classList.remove('hidden');
-
-        document.getElementById('verify-phone').value = this.pendingPhone;
-    }
-
-    async handleVerification(e) {
-        e.preventDefault();
-        const phone = document.getElementById('verify-phone').value;
-        const code = document.getElementById('verify-code').value;
-
-        try {
-            const response = await fetch('/api/auth/verify-phone', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone, code })
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                this.showMessage(this.translator.t('phoneVerifiedSuccessfully'), 'success');
-                this.showAuthScreen(); // Go back to login
-            } else {
-                this.showMessage(data.error, 'error');
-            }
-        } catch (error) {
-            this.showMessage(this.translator.t('verificationFailed'), 'error');
-        }
-    }
-
-    async resendVerificationCode() {
-        const phone = document.getElementById('verify-phone').value;
-
-        try {
-            const response = await fetch('/api/auth/send-verification', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone })
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                this.showMessage(this.translator.t('verificationCodeSent'), 'success');
-            } else {
-                this.showMessage(data.error, 'error');
-            }
-        } catch (error) {
-            this.showMessage(this.translator.t('failedToResendCode'), 'error');
         }
     }
 

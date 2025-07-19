@@ -52,29 +52,41 @@ function authenticateToken(req, res, next) {
   next();
 }
 
-// Login function - supports both email and phone
+// Login function - simplified for single driver use
 async function loginDriver(identifier, password) {
   try {
-    let driver;
-    
-    // Check if identifier is email or phone
-    if (identifier.includes('@')) {
-      driver = await dbHelpers.getDriverByEmail(identifier);
-    } else {
-      driver = await dbHelpers.getDriverByPhone(identifier);
+    // For single driver app, use any alphanumeric string as user ID
+    if (!identifier || !password) {
+      throw new Error('User ID and password required');
     }
+
+    // Get or create driver with this identifier
+    let driver = await dbHelpers.getDriverByIdentifier(identifier);
     
     if (!driver) {
-      throw new Error('Driver not found');
-    }
-
-    if (!driver.is_phone_verified) {
-      throw new Error('Phone number not verified. Please verify your phone first.');
-    }
-
-    const isValidPassword = await verifyPassword(password, driver.password_hash);
-    if (!isValidPassword) {
-      throw new Error('Invalid password');
+      // Auto-create driver for new identifiers
+      const hashedPassword = await hashPassword(password);
+      const driverId = await dbHelpers.createDriver({
+        name: identifier,
+        email: null,
+        password_hash: hashedPassword,
+        phone: identifier
+      });
+      
+      driver = {
+        id: driverId,
+        name: identifier,
+        phone: identifier,
+        email: null,
+        password_hash: hashedPassword,
+        is_phone_verified: 1
+      };
+    } else {
+      // Verify password for existing driver
+      const isValidPassword = await verifyPassword(password, driver.password_hash);
+      if (!isValidPassword) {
+        throw new Error('Invalid password');
+      }
     }
 
     const token = generateToken(driver.id, driver.phone);
@@ -184,21 +196,13 @@ async function verifySMSCode(phone, code) {
   }
 }
 
-// Register function - phone-based registration
+// Register function - simplified without SMS verification
 async function registerDriver(name, phone, email, password) {
   try {
-    // Check if phone already exists
-    const existingDriverByPhone = await dbHelpers.getDriverByPhone(phone);
-    if (existingDriverByPhone) {
-      throw new Error('Phone number already registered');
-    }
-
-    // Check email if provided
-    if (email) {
-      const existingDriverByEmail = await dbHelpers.getDriverByEmail(email);
-      if (existingDriverByEmail) {
-        throw new Error('Email already registered');
-      }
+    // Check if identifier already exists
+    const existingDriver = await dbHelpers.getDriverByIdentifier(phone);
+    if (existingDriver) {
+      throw new Error('User ID already registered');
     }
 
     const password_hash = password ? await hashPassword(password) : null;
@@ -209,17 +213,11 @@ async function registerDriver(name, phone, email, password) {
       phone
     });
 
-    // Send SMS verification
-    const smsResult = await sendSMSVerification(phone);
-    if (!smsResult.success) {
-      throw new Error('Failed to send verification SMS');
-    }
-
     return {
       success: true,
-      message: 'Registration successful. Please verify your phone number.',
+      message: 'Registration successful. You can now login.',
       driverId,
-      requiresVerification: true
+      requiresVerification: false
     };
   } catch (error) {
     return {

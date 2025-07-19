@@ -111,6 +111,16 @@ const dbHelpers = {
     });
   },
 
+  // Get driver by identifier (simplified for single driver app)
+  getDriverByIdentifier: (identifier) => {
+    return new Promise((resolve, reject) => {
+      db.get('SELECT * FROM drivers WHERE (phone = ? OR email = ?) AND is_active = 1', [identifier, identifier], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+  },
+
   // Update verification code
   updateVerificationCode: (phone, code) => {
     return new Promise((resolve, reject) => {
@@ -157,7 +167,7 @@ const dbHelpers = {
     return new Promise((resolve, reject) => {
       const { name, email, password_hash, phone } = driverData;
       db.run(
-        'INSERT INTO drivers (name, email, password_hash, phone) VALUES (?, ?, ?, ?)',
+        'INSERT INTO drivers (name, email, password_hash, phone, is_phone_verified) VALUES (?, ?, ?, ?, 1)',
         [name, email, password_hash, phone],
         function(err) {
           if (err) reject(err);
