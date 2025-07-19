@@ -467,8 +467,10 @@ class DriverApp {
                                 <div class="shift-item">
                                     <p><strong>${this.translator.t('shift')} #${shift.id}</strong></p>
                                     <p>${this.translator.t('start')}: ${startTime}</p>
+                                    <p>${this.translator.t('startOdometer')}: ${shift.start_odometer} ${this.translator.t('km')}</p>
                                     ${shift.clock_out_time ? `
                                         <p>${this.translator.t('end')}: ${endTime}</p>
+                                        <p>${this.translator.t('endOdometer')}: ${shift.end_odometer} ${this.translator.t('km')}</p>
                                         <p>${this.translator.t('distance')}: ${shift.total_distance || 0} ${this.translator.t('km')}</p>
                                         <p>${this.translator.t('duration')}: ${readableDuration || Math.round(shift.shift_duration_minutes || 0) + ' minutes'}</p>
                                     ` : `<p><strong>${this.translator.t('currentlyActive')}</strong></p>`}

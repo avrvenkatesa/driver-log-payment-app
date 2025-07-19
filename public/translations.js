@@ -47,6 +47,7 @@ class TranslationManager {
                 readyForNewShift: "Ready to start a new shift",
                 started: "Started",
                 startOdometer: "Start Odometer",
+                endOdometer: "End Odometer",
 
                 // Quick Actions
                 quickActions: "Quick Actions",
@@ -152,6 +153,7 @@ class TranslationManager {
                 readyForNewShift: "புதிய ஷிஃப்ட் தொடங்க தயார்",
                 started: "தொடங்கியது",
                 startOdometer: "தொடக்க ஓடோமீட்டர்",
+                endOdometer: "முடிவு ஓடோமீட்டர்",
 
                 // Quick Actions
                 quickActions: "விரைவு செயல்கள்",
