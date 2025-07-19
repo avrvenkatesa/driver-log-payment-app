@@ -96,7 +96,7 @@ async function loginDriver(identifier, password) {
   }
 }
 
-// Send SMS verification code using SMS77.io
+// Send SMS verification code using seven.io
 async function sendSMSVerification(phone) {
   try {
     const axios = require('axios');
@@ -107,13 +107,13 @@ async function sendSMSVerification(phone) {
     // Update database with verification code
     await dbHelpers.updateVerificationCode(phone, verificationCode);
     
-    // SMS77.io API configuration
-    const SMS77_API_KEY = process.env.SMS77_API_KEY;
+    // seven.io API configuration
+    const SEVEN_IO_API_KEY = process.env.SEVEN_IO_API_KEY;
     
-    if (!SMS77_API_KEY) {
+    if (!SEVEN_IO_API_KEY) {
       // Fallback to console logging for development
       console.log(`📱 SMS Verification Code for ${phone}: ${verificationCode}`);
-      console.log('⚠️  SMS77_API_KEY not found in environment variables');
+      console.log('⚠️  SEVEN_IO_API_KEY not found in environment variables');
       return {
         success: true,
         message: 'Verification code generated (check console in development)'
@@ -123,10 +123,10 @@ async function sendSMSVerification(phone) {
     // Format phone number for international format
     const formattedPhone = phone.startsWith('+') ? phone : `+${phone}`;
     
-    // Send SMS via SMS77.io
-    const smsResponse = await axios.post('https://gateway.sms77.io/api/sms', null, {
+    // Send SMS via seven.io
+    const smsResponse = await axios.post('https://gateway.seven.io/api/sms', null, {
       params: {
-        apikey: SMS77_API_KEY,
+        apikey: SEVEN_IO_API_KEY,
         to: formattedPhone,
         text: `Your Driver Log verification code is: ${verificationCode}`,
         from: 'DriverLog' // Optional sender ID
@@ -141,7 +141,7 @@ async function sendSMSVerification(phone) {
         message: 'Verification code sent successfully'
       };
     } else {
-      throw new Error('SMS77 API error: ' + smsResponse.data);
+      throw new Error('seven.io API error: ' + smsResponse.data);
     }
     
   } catch (error) {
