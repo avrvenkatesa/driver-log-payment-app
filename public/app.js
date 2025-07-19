@@ -1388,16 +1388,51 @@ class DriverApp {
         document.body.insertAdjacentHTML('beforeend', modalHtml);
     }
 
+    updateConfigPreview() {
+        const salary = document.getElementById('config-monthly-salary')?.value || '27000';
+        const overtime = document.getElementById('config-overtime-rate')?.value || '100';
+        const fuel = document.getElementById('config-fuel-allowance')?.value || '33.30';
+
+        document.getElementById('preview-salary').textContent = salary;
+        document.getElementById('preview-overtime').textContent = overtime;
+        document.getElementById('preview-fuel').textContent = fuel;
+    }
+
+    async handlePayrollConfig(e) {
+        e.preventDefault();
+
+        const configData = {
+            monthlySalary: parseFloat(document.getElementById('config-monthly-salary').value),
+            overtimeRate: parseFloat(document.getElementById('config-overtime-rate').value),
+            fuelAllowance: parseFloat(document.getElementById('config-fuel-allowance').value),
+            workingHours: parseFloat(document.getElementById('config-working-hours').value)
+        };
+
+        // For now, just show success message and update local storage
+        // In a full implementation, this would save to database
+        localStorage.setItem('payrollConfig', JSON.stringify(configData));
+        this.showMessage('Payroll configuration saved successfully', 'success');
+        this.updateConfigPreview();
+    }
+
     async handleGenerateTestData(e) {
         e.preventDefault();
+
+        // Get configuration from form or local storage
+        let payrollConfig;
+        try {
+            payrollConfig = JSON.parse(localStorage.getItem('payrollConfig')) || {};
+        } catch (e) {
+            payrollConfig = {};
+        }
 
         const formData = {
             driverId: document.getElementById('test-driver-select').value,
             startMonth: document.getElementById('test-start-month').value,
             endMonth: document.getElementById('test-end-month').value,
-            monthlySalary: parseFloat(document.getElementById('test-monthly-salary').value),
-            overtimeRate: parseFloat(document.getElementById('test-overtime-rate').value),
-            fuelAllowance: parseFloat(document.getElementById('test-fuel-allowance').value)
+            monthlySalary: payrollConfig.monthlySalary || parseFloat(document.getElementById('config-monthly-salary')?.value || '27000'),
+            overtimeRate: payrollConfig.overtimeRate || parseFloat(document.getElementById('config-overtime-rate')?.value || '100'),
+            fuelAllowance: payrollConfig.fuelAllowance || parseFloat(document.getElementById('config-fuel-allowance')?.value || '33.30')
         };
 
         if (!formData.driverId) {
@@ -1487,8 +1522,36 @@ class DriverApp {
 
                 <div class="settings-grid">
                     <div class="setting-card">
+                        <h4>Payroll Configuration</h4>
+                        <p>Configure default payroll settings for the system.</p>
+                        <form id="payroll-config-form" class="config-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="config-monthly-salary">Default Monthly Salary (₹):</label>
+                                    <input type="number" id="config-monthly-salary" value="27000" min="0" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="config-overtime-rate">Overtime Rate (₹/hour):</label>
+                                    <input type="number" id="config-overtime-rate" value="100" min="0" step="0.01" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="config-fuel-allowance">Daily Fuel Allowance (₹):</label>
+                                    <input type="number" id="config-fuel-allowance" value="33.30" min="0" step="0.01" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="config-working-hours">Regular Working Hours/Day:</label>
+                                    <input type="number" id="config-working-hours" value="8" min="1" max="24" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="action-btn">Save Configuration</button>
+                        </form>
+                    </div>
+
+                    <div class="setting-card">
                         <h4>Generate Test Data</h4>
-                        <p>Generate configurable test shift data for selected driver and time period.</p>
+                        <p>Generate test shift data for selected driver and time period using current configuration.</p>
                         <form id="generate-test-data-form" class="test-data-form">
                             <div class="form-row">
                                 <div class="form-group">
@@ -1507,20 +1570,12 @@ class DriverApp {
                                     <label for="test-end-month">End Month:</label>
                                     <input type="month" id="test-end-month" required>
                                 </div>
-                                <div class="form-group">
-                                    <label for="test-monthly-salary">Monthly Salary (₹):</label>
-                                    <input type="number" id="test-monthly-salary" value="27000" min="0" required>
-                                </div>
                             </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="test-overtime-rate">Overtime Rate (₹/hour):</label>
-                                    <input type="number" id="test-overtime-rate" value="100" min="0" step="0.01" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="test-fuel-allowance">Daily Fuel Allowance (₹):</label>
-                                    <input type="number" id="test-fuel-allowance" value="33.30" min="0" step="0.01" required>
-                                </div>
+                            <div class="config-preview">
+                                <p><small><strong>Using Configuration:</strong></p>
+                                <p>Monthly Salary: ₹<span id="preview-salary">27000</span> | 
+                                   Overtime Rate: ₹<span id="preview-overtime">100</span>/hr | 
+                                   Fuel Allowance: ₹<span id="preview-fuel">33.30</span>/day</small></p>
                             </div>
                             <button type="submit" class="action-btn">Generate Test Data</button>
                         </form>
@@ -1559,14 +1614,23 @@ class DriverApp {
         `;
 
         // Set up event listeners
+        document.getElementById('payroll-config-form')?.addEventListener('submit', (e) => this.handlePayrollConfig(e));
         document.getElementById('generate-test-data-form')?.addEventListener('submit', (e) => this.handleGenerateTestData(e));
         document.getElementById('backup-data-btn')?.addEventListener('click', () => this.confirmAction('backup'));
         document.getElementById('clear-data-btn')?.addEventListener('click', () => this.confirmAction('clear'));
+
+        // Update config preview when values change
+        ['config-monthly-salary', 'config-overtime-rate', 'config-fuel-allowance'].forEach(id => {
+            document.getElementById(id)?.addEventListener('input', () => this.updateConfigPreview());
+        });
 
         // Set default months
         const currentMonth = new Date().toISOString().slice(0, 7);
         document.getElementById('test-start-month').value = currentMonth;
         document.getElementById('test-end-month').value = currentMonth;
+
+        // Initialize config preview
+        this.updateConfigPreview();
     }
 }
 
