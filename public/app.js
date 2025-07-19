@@ -34,7 +34,7 @@ class DriverApp {
         document.getElementById('driver-tab').textContent = this.translator.t('driverDashboard');
         document.getElementById('admin-tab').textContent = this.translator.t('adminPanel');
 
-        
+
 
         // Refresh current view
         if (this.token) {
@@ -233,7 +233,7 @@ class DriverApp {
                 this.showDriverDashboard();
                 this.showMessage(this.translator.t('loginSuccessful'), 'success');
             } else {
-                this.showMessage(data.error, 'error');
+                this.showMessage(this.translateError(data.error), 'error');
             }
         } catch (error) {
             this.showMessage(this.translator.t('loginFailed'), 'error');
@@ -260,7 +260,7 @@ class DriverApp {
                 this.showMessage(this.translator.t('registrationSuccessful'), 'success');
                 this.toggleAuthMode();
             } else {
-                this.showMessage(data.error, 'error');
+                this.showMessage(this.translateError(data.error), 'error');
             }
         } catch (error) {
             this.showMessage(this.translator.t('registrationFailed'), 'error');
@@ -370,7 +370,7 @@ class DriverApp {
                 document.getElementById('action-forms').innerHTML = '';
                 this.loadDriverStatus();
             } else {
-                this.showMessage(data.error, 'error');
+                this.showMessage(this.translateError(data), 'error');
             }
         } catch (error) {
             this.showMessage(this.translator.t('failedToClockIn'), 'error');
@@ -398,7 +398,7 @@ class DriverApp {
                 document.getElementById('action-forms').innerHTML = '';
                 this.loadDriverStatus();
             } else {
-                this.showMessage(data.error, 'error');
+                this.showMessage(this.translateError(data), 'error');
             }
         } catch (error) {
             this.showMessage(this.translator.t('failedToClockOut'), 'error');

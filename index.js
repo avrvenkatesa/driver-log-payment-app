@@ -41,7 +41,7 @@ app.post('/api/auth/login', async (req, res) => {
   const { identifier, password } = req.body; // identifier can be any alphanumeric string
   
   if (!identifier || !password) {
-    return res.status(400).json({ error: 'User ID and password required' });
+    return res.status(400).json({ error: 'phoneEmailPasswordRequired' });
   }
 
   const result = await loginDriver(identifier, password);
@@ -57,7 +57,7 @@ app.post('/api/auth/register', async (req, res) => {
   const { name, phone, email, password } = req.body;
   
   if (!name || !phone || !password) {
-    return res.status(400).json({ error: 'Name, User ID and password required' });
+    return res.status(400).json({ error: 'namePhoneRequired' });
   }
 
   // Handle empty email field
@@ -79,20 +79,21 @@ app.post('/api/driver/clock-in', authenticateToken, async (req, res) => {
     const driverId = req.user.driverId;
 
     if (!startOdometer || startOdometer < 0) {
-      return res.status(400).json({ error: 'Valid starting odometer reading required' });
+      return res.status(400).json({ error: 'validStartOdometerRequired' });
     }
 
     // Check if driver already has an active shift
     const activeShift = await dbHelpers.getActiveShift(driverId);
     if (activeShift) {
-      return res.status(400).json({ error: 'You already have an active shift. Please clock out first.' });
+      return res.status(400).json({ error: 'alreadyActiveShift' });
     }
 
     // Check if start odometer is greater than previous end odometer
     const lastShift = await dbHelpers.getLastCompletedShift(driverId);
     if (lastShift && lastShift.end_odometer && startOdometer <= lastShift.end_odometer) {
       return res.status(400).json({ 
-        error: `Start odometer (${startOdometer}) must be greater than previous end odometer (${lastShift.end_odometer})` 
+        error: 'startOdometerMustBeGreater',
+        data: { startOdometer, endOdometer: lastShift.end_odometer }
       });
     }
 
@@ -113,17 +114,17 @@ app.post('/api/driver/clock-out', authenticateToken, async (req, res) => {
     const driverId = req.user.driverId;
 
     if (!endOdometer || endOdometer < 0) {
-      return res.status(400).json({ error: 'Valid ending odometer reading required' });
+      return res.status(400).json({ error: 'validEndOdometerRequired' });
     }
 
     // Get active shift
     const activeShift = await dbHelpers.getActiveShift(driverId);
     if (!activeShift) {
-      return res.status(400).json({ error: 'No active shift found. Please clock in first.' });
+      return res.status(400).json({ error: 'noActiveShift' });
     }
 
     if (endOdometer < activeShift.start_odometer) {
-      return res.status(400).json({ error: 'End odometer cannot be less than start odometer' });
+      return res.status(400).json({ error: 'endOdometerLessThanStart' });
     }
 
     await dbHelpers.clockOut(activeShift.id, endOdometer);

@@ -105,7 +105,8 @@ class TranslationManager {
                 failedToClockOut: "Failed to clock out",
                 failedToLoadShiftStatus: "Failed to load shift status",
                 failedToLoadShifts: "Failed to load shifts",
-                failedToResendCode: "Failed to resend code. Please try again."
+                failedToResendCode: "Failed to resend code. Please try again.",
+                startOdometerMustBeGreater: "Start odometer ({startOdometer}) must be greater than previous end odometer ({endOdometer})"
             },
             ta: {
                 // Header
@@ -209,7 +210,8 @@ class TranslationManager {
                 failedToClockOut: "கடிகாரத்தில் இருந்து வெளியேற முடியவில்லை",
                 failedToLoadShiftStatus: "ஷிஃப்ட் நிலையை ஏற்ற முடியவில்லை",
                 failedToLoadShifts: "ஷிஃப்ட்களை ஏற்ற முடியவில்லை",
-                failedToResendCode: "குறியீட்டை மீண்டும் அனுப்ப முடியவில்லை. மீண்டும் முயற்சிக்கவும்."
+                failedToResendCode: "குறியீட்டை மீண்டும் அனுப்ப முடியவில்லை. மீண்டும் முயற்சிக்கவும்.",
+                startOdometerMustBeGreater: "தொடக்க ஓடோமீட்டர் ({startOdometer}) முந்தைய முடிவு ஓடோமீட்டரை ({endOdometer}) விட அதிகமாக இருக்க வேண்டும்"
             }
         };
     }
