@@ -676,10 +676,10 @@ class DriverApp {
                 <h2>${this.translator.t('adminPanel')}</h2>
 
                 <div class="admin-tabs">
-                    <button id="drivers-tab" class="admin-tab-btn active" onclick="app.showAdminTab('drivers')">${this.translator.t('drivers')}</button>
-                    <button id="shifts-tab" class="admin-tab-btn" onclick="app.showAdminTab('shifts')">${this.translator.t('shifts')}</button>
-                    <button id="reports-tab" class="admin-tab-btn" onclick="app.showAdminTab('reports')">${this.translator.t('reports')}</button>
-                    <button id="settings-tab" class="admin-tab-btn" onclick="app.showAdminTab('settings')">${this.translator.t('settings')}</button>
+                    <button id="drivers-tab" class="admin-tab-btn active">${this.translator.t('drivers')}</button>
+                    <button id="shifts-tab" class="admin-tab-btn">${this.translator.t('shifts')}</button>
+                    <button id="reports-tab" class="admin-tab-btn">${this.translator.t('reports')}</button>
+                    <button id="settings-tab" class="admin-tab-btn">${this.translator.t('settings')}</button>
                 </div>
 
                 <div id="admin-content">
@@ -687,6 +687,12 @@ class DriverApp {
                 </div>
             </div>
         `;
+
+        // Set up admin tab event listeners
+        document.getElementById('drivers-tab')?.addEventListener('click', () => this.showAdminTab('drivers'));
+        document.getElementById('shifts-tab')?.addEventListener('click', () => this.showAdminTab('shifts'));
+        document.getElementById('reports-tab')?.addEventListener('click', () => this.showAdminTab('reports'));
+        document.getElementById('settings-tab')?.addEventListener('click', () => this.showAdminTab('settings'));
 
         this.showAdminTab('drivers');
     }
@@ -718,7 +724,7 @@ class DriverApp {
             <div class="admin-section-content">
                 <div class="section-header">
                     <h3>${this.translator.t('driversManagement')}</h3>
-                    <button class="action-btn secondary" onclick="app.loadDriversData()">
+                    <button id="refresh-drivers-btn" class="action-btn secondary">
                         ${this.translator.t('refresh')}
                     </button>
                 </div>
@@ -727,6 +733,9 @@ class DriverApp {
                 </div>
             </div>
         `;
+
+        // Set up refresh button event listener
+        document.getElementById('refresh-drivers-btn')?.addEventListener('click', () => this.loadDriversData());
 
         await this.loadDriversData();
     }
@@ -782,7 +791,7 @@ class DriverApp {
                             </span></td>
                             <td>${this.formatToIST(driver.created_at)}</td>
                             <td>
-                                <button class="btn-small" onclick="app.viewDriverDetails(${driver.id})">
+                                <button class="btn-small" data-driver-id="${driver.id}">
                                     ${this.translator.t('view')}
                                 </button>
                             </td>
@@ -793,6 +802,14 @@ class DriverApp {
         `;
 
         document.getElementById('drivers-list').innerHTML = tableHtml;
+
+        // Set up view driver detail button event listeners
+        document.querySelectorAll('.btn-small[data-driver-id]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const driverId = e.target.getAttribute('data-driver-id');
+                this.viewDriverDetails(driverId);
+            });
+        });
     }
 
     async loadShiftsAnalytics() {
@@ -802,13 +819,13 @@ class DriverApp {
                 <div class="section-header">
                     <h3>${this.translator.t('shiftsAnalytics')}</h3>
                     <div class="filter-controls">
-                        <select id="analytics-filter" onchange="app.filterShiftsAnalytics()">
+                        <select id="analytics-filter">
                             <option value="today">${this.translator.t('today')}</option>
                             <option value="week">${this.translator.t('thisWeek')}</option>
                             <option value="month">${this.translator.t('thisMonth')}</option>
                             <option value="all">${this.translator.t('allTime')}</option>
                         </select>
-                        <button class="action-btn secondary" onclick="app.loadShiftsAnalyticsData()">
+                        <button id="refresh-analytics-btn" class="action-btn secondary">
                             ${this.translator.t('refresh')}
                         </button>
                     </div>
@@ -823,6 +840,10 @@ class DriverApp {
                 </div>
             </div>
         `;
+
+        // Set up event listeners
+        document.getElementById('analytics-filter')?.addEventListener('change', () => this.filterShiftsAnalytics());
+        document.getElementById('refresh-analytics-btn')?.addEventListener('click', () => this.loadShiftsAnalyticsData());
 
         await this.loadShiftsAnalyticsData();
     }
@@ -944,7 +965,7 @@ class DriverApp {
                                 <option value="2025" selected>2025</option>
                                 <option value="2026">2026</option>
                             </select>
-                            <button class="action-btn" onclick="app.generateMonthlyReport()">
+                            <button id="generate-monthly-report-btn" class="action-btn">
                                 ${this.translator.t('generate')}
                             </button>
                         </div>
@@ -953,7 +974,7 @@ class DriverApp {
                     <div class="report-card">
                         <h4>${this.translator.t('driverReport')}</h4>
                         <p>${this.translator.t('driverReportDesc')}</p>
-                        <button class="action-btn" onclick="app.generateDriverReport()">
+                        <button id="generate-driver-report-btn" class="action-btn">
                             ${this.translator.t('generate')}
                         </button>
                     </div>
@@ -964,6 +985,10 @@ class DriverApp {
                 </div>
             </div>
         `;
+
+        // Set up event listeners
+        document.getElementById('generate-monthly-report-btn')?.addEventListener('click', () => this.generateMonthlyReport());
+        document.getElementById('generate-driver-report-btn')?.addEventListener('click', () => this.generateDriverReport());
     }
 
     async generateMonthlyReport() {
@@ -1159,10 +1184,10 @@ class DriverApp {
 
                     <div class="setting-card">
                         <h4>${this.translator.t('dataManagement')}</h4>
-                        <button class="action-btn warning" onclick="app.confirmAction('backup')">
+                        <button id="backup-data-btn" class="action-btn warning">
                             ${this.translator.t('backupData')}
                         </button>
-                        <button class="action-btn danger" onclick="app.confirmAction('clear')">
+                        <button id="clear-data-btn" class="action-btn danger">
                             ${this.translator.t('clearTestData')}
                         </button>
                     </div>
@@ -1185,6 +1210,10 @@ class DriverApp {
                 </div>
             </div>
         `;
+
+        // Set up event listeners
+        document.getElementById('backup-data-btn')?.addEventListener('click', () => this.confirmAction('backup'));
+        document.getElementById('clear-data-btn')?.addEventListener('click', () => this.confirmAction('clear'));
     }
 }
 
