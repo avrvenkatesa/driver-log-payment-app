@@ -144,10 +144,25 @@ class DriverApp {
                     </form>
 
                     <form id="register-form" class="auth-form">
-                        <input type="text" id="register-name" placeholder="${this.translator.t('fullName')}" required>
-                        <input type="tel" id="register-phone" placeholder="${this.translator.t('phone')}" required>
-                        <input type="email" id="register-email" placeholder="${this.translator.t('email')}">
-                        <input type="password" id="register-password" placeholder="${this.translator.t('password')}" required>
+                        <div class="field-group">
+                            <label class="field-label required">${this.translator.t('fullName')} *</label>
+                            <input type="text" id="register-name" placeholder="${this.translator.t('fullName')}" required>
+                        </div>
+                        <div class="field-group">
+                            <label class="field-label required">${this.translator.t('phone')} *</label>
+                            <input type="tel" id="register-phone" placeholder="${this.translator.t('phone')}" required>
+                        </div>
+                        <div class="field-group">
+                            <label class="field-label optional">${this.translator.t('email')} (${this.translator.t('optional')})</label>
+                            <input type="email" id="register-email" placeholder="${this.translator.t('email')}">
+                        </div>
+                        <div class="field-group">
+                            <label class="field-label required">${this.translator.t('password')} *</label>
+                            <input type="password" id="register-password" placeholder="${this.translator.t('password')}" required>
+                        </div>
+                        <div class="field-requirements">
+                            <p class="requirement-note">${this.translator.t('fieldsMarkedRequired')}</p>
+                        </div>
                         <button type="submit" class="auth-btn">${this.translator.t('register')}</button>
                         <p class="auth-toggle">
                             ${this.translator.t('alreadyHaveAccount')} 

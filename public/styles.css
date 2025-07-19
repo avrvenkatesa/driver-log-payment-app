@@ -249,6 +249,39 @@ main {
     min-height: 60vh;
 }
 
+.field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.field-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+.field-label.required {
+    color: #e74c3c;
+}
+
+.field-label.optional {
+    color: #7f8c8d;
+}
+
+.field-requirements {
+    background: #f8f9fa;
+    padding: 0.75rem;
+    border-radius: 6px;
+    border-left: 3px solid #3498db;
+}
+
+.requirement-note {
+    font-size: 0.85rem;
+    color: #7f8c8d;
+    margin: 0;
+}
+
 .auth-card {
     background: rgba(255, 255, 255, 0.95);
     border-radius: 15px;

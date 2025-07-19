@@ -83,6 +83,10 @@ class TranslationManager {
                 clockedOutSuccessfully: "Clocked out successfully!",
                 verificationCodeSent: "New verification code sent!",
                 
+                // Field requirements
+                optional: "Optional",
+                fieldsMarkedRequired: "* Fields marked with asterisk are required",
+                
                 // Errors
                 phoneEmailPasswordRequired: "Phone/Email and password required",
                 namePhoneRequired: "Name and phone number required",
@@ -171,6 +175,10 @@ class TranslationManager {
                 km: "கி.மீ",
                 currentlyActive: "தற்போது செயலில்",
                 noShiftsToday: "இன்றைக்கு ஷிஃப்ட்கள் பதிவு செய்யப்படவில்லை.",
+                
+                // Field requirements
+                optional: "விருப்பமான",
+                fieldsMarkedRequired: "* நட்சத்திரம் குறிக்கப்பட்ட புலங்கள் தேவை",
                 
                 // Messages
                 loginSuccessful: "உள்நுழைவு வெற்றிகரமாக!",
