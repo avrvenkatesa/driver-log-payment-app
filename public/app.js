@@ -296,7 +296,12 @@ class DriverApp {
             if (data.hasActiveShift) {
                 const shift = data.activeShift;
                 
-                // Format time properly in IST
+                // DEBUG: Log the original timestamp from server
+                console.log('Original timestamp from server:', shift.clock_in_time);
+                console.log('Date object created:', new Date(shift.clock_in_time));
+                console.log('Current browser timezone:', Intl.DateTimeFormat().resolvedOptions().timeZone);
+                
+                // Create multiple time formats for comparison
                 const clockInTime = new Date(shift.clock_in_time).toLocaleString('en-IN', { 
                     timeZone: 'Asia/Kolkata',
                     year: 'numeric',
@@ -308,10 +313,29 @@ class DriverApp {
                     hour12: false
                 });
                 
+                // Alternative format using UTC offset
+                const istDate = new Date(shift.clock_in_time);
+                const utcTime = istDate.getTime() + (istDate.getTimezoneOffset() * 60000);
+                const istTime = new Date(utcTime + (5.5 * 3600000)); // IST is UTC+5:30
+                const manualIstFormat = istTime.toLocaleString('en-IN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                });
+                
+                console.log('Formatted with timeZone Asia/Kolkata:', clockInTime);
+                console.log('Manual IST calculation:', manualIstFormat);
+                
                 statusDiv.innerHTML = `
                     <div class="active-shift">
                         <p><strong>${this.translator.t('currentlyOnShift')}</strong></p>
                         <p>${this.translator.t('started')}: ${clockInTime}</p>
+                        <p><small>Debug - Manual IST: ${manualIstFormat}</small></p>
+                        <p><small>Debug - Original: ${shift.clock_in_time}</small></p>
                         <p>${this.translator.t('startOdometer')}: ${shift.start_odometer} ${this.translator.t('km')}</p>
                     </div>
                 `;
@@ -432,21 +456,18 @@ class DriverApp {
                     <div class="shifts-card">
                         <h3>${this.translator.t('todaysShifts')}</h3>
                         ${data.shifts.map(shift => {
-                            // Format start time in IST
-                            const startTime = new Date(shift.clock_in_time).toLocaleString('en-IN', { 
-                                timeZone: 'Asia/Kolkata',
-                                year: 'numeric',
-                                month: '2-digit',
-                                day: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                second: '2-digit',
-                                hour12: false
-                            });
+                            // DEBUG: Log timestamps
+                            console.log('Shift start time from server:', shift.clock_in_time);
+                            if (shift.clock_out_time) {
+                                console.log('Shift end time from server:', shift.clock_out_time);
+                            }
                             
-                            // Format end time in IST (if exists)
-                            const endTime = shift.clock_out_time ? 
-                                new Date(shift.clock_out_time).toLocaleString('en-IN', { 
+                            // Helper function to format time in IST
+                            const formatToIST = (timestamp) => {
+                                if (!timestamp) return null;
+                                
+                                // Method 1: Using timeZone
+                                const method1 = new Date(timestamp).toLocaleString('en-IN', { 
                                     timeZone: 'Asia/Kolkata',
                                     year: 'numeric',
                                     month: '2-digit',
@@ -455,14 +476,34 @@ class DriverApp {
                                     minute: '2-digit',
                                     second: '2-digit',
                                     hour12: false
-                                }) : null;
+                                });
+                                
+                                // Method 2: Manual IST conversion
+                                const date = new Date(timestamp);
+                                const utcTime = date.getTime() + (date.getTimezoneOffset() * 60000);
+                                const istDate = new Date(utcTime + (5.5 * 3600000));
+                                const method2 = istDate.getFullYear() + '-' +
+                                    String(istDate.getMonth() + 1).padStart(2, '0') + '-' +
+                                    String(istDate.getDate()).padStart(2, '0') + ', ' +
+                                    String(istDate.getHours()).padStart(2, '0') + ':' +
+                                    String(istDate.getMinutes()).padStart(2, '0') + ':' +
+                                    String(istDate.getSeconds()).padStart(2, '0');
+                                
+                                console.log(`Method 1 (timeZone): ${method1}, Method 2 (manual): ${method2}`);
+                                return method1; // Use method 1 for now
+                            };
+                            
+                            const startTime = formatToIST(shift.clock_in_time);
+                            const endTime = shift.clock_out_time ? formatToIST(shift.clock_out_time) : null;
                             
                             return `
                                 <div class="shift-item">
                                     <p><strong>${this.translator.t('shift')} #${shift.id}</strong></p>
                                     <p>${this.translator.t('start')}: ${startTime}</p>
+                                    <p><small>Raw: ${shift.clock_in_time}</small></p>
                                     ${shift.clock_out_time ? `
                                         <p>${this.translator.t('end')}: ${endTime}</p>
+                                        <p><small>Raw: ${shift.clock_out_time}</small></p>
                                         <p>${this.translator.t('distance')}: ${shift.total_distance || 0} ${this.translator.t('km')}</p>
                                         <p>${this.translator.t('duration')}: ${Math.round(shift.shift_duration_minutes || 0)} ${this.translator.t('minutes')}</p>
                                     ` : `<p><strong>${this.translator.t('currentlyActive')}</strong></p>`}
@@ -494,6 +535,39 @@ class DriverApp {
         setTimeout(() => {
             messageDiv.remove();
         }, 3000);
+    }
+
+    formatToIST(timestamp) {
+        if (!timestamp) return null;
+        
+        try {
+            // Create date object from timestamp
+            const date = new Date(timestamp);
+            
+            // Check if the date is valid
+            if (isNaN(date.getTime())) {
+                console.error('Invalid timestamp:', timestamp);
+                return 'Invalid Date';
+            }
+            
+            // Method 1: Using Intl.DateTimeFormat for IST
+            const formatter = new Intl.DateTimeFormat('en-IN', {
+                timeZone: 'Asia/Kolkata',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            
+            return formatter.format(date);
+            
+        } catch (error) {
+            console.error('Error formatting date:', error, timestamp);
+            return 'Error formatting date';
+        }
     }
 
     translateError(errorResponse) {
