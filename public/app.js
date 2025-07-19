@@ -295,22 +295,19 @@ class DriverApp {
 
             if (data.hasActiveShift) {
                 const shift = data.activeShift;
-                const startTime = new Date(shift.clock_in_time);
-                const indiaTime = new Intl.DateTimeFormat('en-GB', {
-                    timeZone: 'Asia/Kolkata',
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: false
-                }).format(startTime);
-                
                 statusDiv.innerHTML = `
                     <div class="active-shift">
                         <p><strong>${this.translator.t('currentlyOnShift')}</strong></p>
-                        <p>${this.translator.t('started')}: ${indiaTime}</p>
+                        <p>${this.translator.t('started')}: ${new Date(shift.clock_in_time).toLocaleString('en-IN', { 
+                            timeZone: 'Asia/Kolkata',
+                            year: 'numeric',
+                            month: '2-digit', 
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                            hour12: false
+                        })}</p>
                         <p>${this.translator.t('startOdometer')}: ${shift.start_odometer} ${this.translator.t('km')}</p>
                     </div>
                 `;
