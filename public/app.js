@@ -304,7 +304,7 @@ class DriverApp {
                 // Calculate how long the shift has been running
                 let shiftDuration = '';
                 try {
-                    const startTime = new Date(shift.clock_in_time + '+05:30');
+                    const startTime = new Date(shift.clock_in_time);
                     const now = new Date();
                     const diffMs = now - startTime;
                     const hours = Math.floor(diffMs / (1000 * 60 * 60));
