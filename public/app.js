@@ -304,14 +304,34 @@ class DriverApp {
                 // Calculate how long the shift has been running
                 let shiftDuration = '';
                 try {
+                    // Parse the timestamp as local time (IST)
                     const startTime = new Date(shift.clock_in_time);
                     const now = new Date();
+                    
+                    console.log('Start time parsed:', startTime.toLocaleString());
+                    console.log('Current time:', now.toLocaleString());
+                    
                     const diffMs = now - startTime;
-                    const hours = Math.floor(diffMs / (1000 * 60 * 60));
-                    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-                    shiftDuration = `(${hours}h ${minutes}m ago)`;
+                    console.log('Difference in milliseconds:', diffMs);
+                    
+                    if (diffMs < 0) {
+                        shiftDuration = '(just started)';
+                    } else {
+                        const totalMinutes = Math.floor(diffMs / (1000 * 60));
+                        const hours = Math.floor(totalMinutes / 60);
+                        const minutes = totalMinutes % 60;
+                        
+                        console.log('Total minutes:', totalMinutes, 'Hours:', hours, 'Minutes:', minutes);
+                        
+                        if (hours > 0) {
+                            shiftDuration = `(${hours}h ${minutes}m ago)`;
+                        } else {
+                            shiftDuration = `(${minutes}m ago)`;
+                        }
+                    }
                 } catch (e) {
                     console.error('Error calculating duration:', e);
+                    shiftDuration = '(calculation error)';
                 }
                 
                 statusDiv.innerHTML = `
@@ -492,17 +512,9 @@ class DriverApp {
         if (!timestamp) return null;
         
         try {
-            let date;
-            
-            // Check if timestamp has timezone info
-            if (timestamp.includes('T') || timestamp.includes('+') || timestamp.includes('Z')) {
-                // ISO format with timezone - parse normally
-                date = new Date(timestamp);
-            } else {
-                // No timezone info - assume it's already in IST
-                // Add IST timezone offset to make it clear
-                date = new Date(timestamp + '+05:30');
-            }
+            // Since your server sends IST timestamps in format "2025-07-19 06:46:56"
+            // and your browser is in IST timezone, treat them as local time
+            const date = new Date(timestamp);
             
             // Check if the date is valid
             if (isNaN(date.getTime())) {
@@ -510,9 +522,8 @@ class DriverApp {
                 return 'Invalid Date';
             }
             
-            // Format in IST
+            // Format as IST (no timezone conversion needed)
             const formatter = new Intl.DateTimeFormat('en-IN', {
-                timeZone: 'Asia/Kolkata',
                 year: 'numeric',
                 month: '2-digit',
                 day: '2-digit',
