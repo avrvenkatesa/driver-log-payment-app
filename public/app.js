@@ -298,7 +298,16 @@ class DriverApp {
                 statusDiv.innerHTML = `
                     <div class="active-shift">
                         <p><strong>${this.translator.t('currentlyOnShift')}</strong></p>
-                        <p>${this.translator.t('started')}: ${new Date(shift.clock_in_time).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
+                        <p>${this.translator.t('started')}: ${new Date(shift.clock_in_time).toLocaleString('en-IN', { 
+                            timeZone: 'Asia/Kolkata',
+                            year: 'numeric',
+                            month: '2-digit', 
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                            hour12: false
+                        })}</p>
                         <p>${this.translator.t('startOdometer')}: ${shift.start_odometer} ${this.translator.t('km')}</p>
                     </div>
                 `;
@@ -421,9 +430,27 @@ class DriverApp {
                         ${data.shifts.map(shift => `
                             <div class="shift-item">
                                 <p><strong>${this.translator.t('shift')} #${shift.id}</strong></p>
-                                <p>${this.translator.t('start')}: ${new Date(shift.clock_in_time).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
+                                <p>${this.translator.t('start')}: ${new Date(shift.clock_in_time).toLocaleString('en-IN', { 
+                                    timeZone: 'Asia/Kolkata',
+                                    year: 'numeric',
+                                    month: '2-digit', 
+                                    day: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    second: '2-digit',
+                                    hour12: false
+                                })}</p>
                                 ${shift.clock_out_time ? `
-                                    <p>${this.translator.t('end')}: ${new Date(shift.clock_out_time).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
+                                    <p>${this.translator.t('end')}: ${new Date(shift.clock_out_time).toLocaleString('en-IN', { 
+                                        timeZone: 'Asia/Kolkata',
+                                        year: 'numeric',
+                                        month: '2-digit', 
+                                        day: '2-digit',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        second: '2-digit',
+                                        hour12: false
+                                    })}</p>
                                     <p>${this.translator.t('distance')}: ${shift.total_distance || 0} ${this.translator.t('km')}</p>
                                     <p>${this.translator.t('duration')}: ${Math.round(shift.shift_duration_minutes || 0)} ${this.translator.t('minutes')}</p>
                                 ` : `<p><strong>${this.translator.t('currentlyActive')}</strong></p>`}
