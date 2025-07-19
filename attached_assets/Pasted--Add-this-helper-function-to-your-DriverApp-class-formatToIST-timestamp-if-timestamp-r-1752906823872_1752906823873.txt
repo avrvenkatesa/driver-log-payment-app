@@ -1,0 +1,150 @@
+// Add this helper function to your DriverApp class
+formatToIST(timestamp) {
+    if (!timestamp) return null;
+    
+    try {
+        let date;
+        
+        // Check if timestamp has timezone info
+        if (timestamp.includes('T') || timestamp.includes('+') || timestamp.includes('Z')) {
+            // ISO format with timezone - parse normally
+            date = new Date(timestamp);
+        } else {
+            // No timezone info - assume it's already in IST
+            // Add IST timezone offset to make it clear
+            date = new Date(timestamp + '+05:30');
+        }
+        
+        // Check if the date is valid
+        if (isNaN(date.getTime())) {
+            console.error('Invalid timestamp:', timestamp);
+            return 'Invalid Date';
+        }
+        
+        // Format in IST
+        const formatter = new Intl.DateTimeFormat('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+        
+        return formatter.format(date);
+        
+    } catch (error) {
+        console.error('Error formatting date:', error, timestamp);
+        return 'Error formatting date';
+    }
+}
+
+// Updated loadDriverStatus function
+async loadDriverStatus() {
+    try {
+        const response = await fetch('/api/driver/status', {
+            headers: { 'Authorization': `Bearer ${this.token}` }
+        });
+
+        const data = await response.json();
+        const statusDiv = document.getElementById('shift-status');
+
+        if (data.hasActiveShift) {
+            const shift = data.activeShift;
+            
+            // Debug logging
+            console.log('Server timestamp:', shift.clock_in_time);
+            
+            const clockInTime = this.formatToIST(shift.clock_in_time);
+            
+            // Calculate how long the shift has been running
+            let shiftDuration = '';
+            try {
+                const startTime = new Date(shift.clock_in_time + '+05:30');
+                const now = new Date();
+                const diffMs = now - startTime;
+                const hours = Math.floor(diffMs / (1000 * 60 * 60));
+                const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                shiftDuration = `(${hours}h ${minutes}m ago)`;
+            } catch (e) {
+                console.error('Error calculating duration:', e);
+            }
+            
+            statusDiv.innerHTML = `
+                <div class="active-shift">
+                    <p><strong>${this.translator.t('currentlyOnShift')}</strong></p>
+                    <p>${this.translator.t('started')}: ${clockInTime} ${shiftDuration}</p>
+                    <p>${this.translator.t('startOdometer')}: ${shift.start_odometer} ${this.translator.t('km')}</p>
+                </div>
+            `;
+            document.getElementById('clock-in-btn').disabled = true;
+            document.getElementById('clock-out-btn').disabled = false;
+        } else {
+            statusDiv.innerHTML = `
+                <div class="no-shift">
+                    <p><strong>${this.translator.t('notOnShift')}</strong></p>
+                    <p>${this.translator.t('readyForNewShift')}</p>
+                </div>
+            `;
+            document.getElementById('clock-in-btn').disabled = false;
+            document.getElementById('clock-out-btn').disabled = true;
+        }
+    } catch (error) {
+        this.showMessage(this.translator.t('failedToLoadShiftStatus'), 'error');
+    }
+}
+
+// Updated loadShifts function
+async loadShifts() {
+    try {
+        const response = await fetch('/api/driver/shifts', {
+            headers: { 'Authorization': `Bearer ${this.token}` }
+        });
+
+        const data = await response.json();
+        const shiftsDiv = document.getElementById('shifts-display');
+
+        if (data.shifts.length > 0) {
+            shiftsDiv.innerHTML = `
+                <div class="shifts-card">
+                    <h3>${this.translator.t('todaysShifts')}</h3>
+                    ${data.shifts.map(shift => {
+                        const startTime = this.formatToIST(shift.clock_in_time);
+                        const endTime = shift.clock_out_time ? this.formatToIST(shift.clock_out_time) : null;
+                        
+                        // Calculate shift duration in a readable format
+                        let readableDuration = '';
+                        if (shift.shift_duration_minutes) {
+                            const hours = Math.floor(shift.shift_duration_minutes / 60);
+                            const minutes = shift.shift_duration_minutes % 60;
+                            readableDuration = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                        }
+                        
+                        return `
+                            <div class="shift-item">
+                                <p><strong>${this.translator.t('shift')} #${shift.id}</strong></p>
+                                <p>${this.translator.t('start')}: ${startTime}</p>
+                                ${shift.clock_out_time ? `
+                                    <p>${this.translator.t('end')}: ${endTime}</p>
+                                    <p>${this.translator.t('distance')}: ${shift.total_distance || 0} ${this.translator.t('km')}</p>
+                                    <p>${this.translator.t('duration')}: ${readableDuration || Math.round(shift.shift_duration_minutes || 0) + ' minutes'}</p>
+                                ` : `<p><strong>${this.translator.t('currentlyActive')}</strong></p>`}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        } else {
+            shiftsDiv.innerHTML = `
+                <div class="shifts-card">
+                    <h3>${this.translator.t('todaysShifts')}</h3>
+                    <p>${this.translator.t('noShiftsToday')}</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        this.showMessage(this.translator.t('failedToLoadShifts'), 'error');
+    }
+}
