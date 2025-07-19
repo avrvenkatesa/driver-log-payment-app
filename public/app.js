@@ -299,45 +299,24 @@ class DriverApp {
                 // Debug logging
                 console.log('Server timestamp:', shift.clock_in_time);
                 
-                const clockInTime = this.formatToIST(shift.clock_in_time);
+                // Show CURRENT time instead of stored start time
+                const now = new Date();
+                const currentTime = now.toLocaleString('en-IN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                });
                 
-                // Calculate how long the shift has been running
-                let shiftDuration = '';
-                try {
-                    // Parse the timestamp as local time (IST)
-                    const startTime = new Date(shift.clock_in_time);
-                    const now = new Date();
-                    
-                    console.log('Start time parsed:', startTime.toLocaleString());
-                    console.log('Current time:', now.toLocaleString());
-                    
-                    const diffMs = now - startTime;
-                    console.log('Difference in milliseconds:', diffMs);
-                    
-                    if (diffMs < 0) {
-                        shiftDuration = '(just started)';
-                    } else {
-                        const totalMinutes = Math.floor(diffMs / (1000 * 60));
-                        const hours = Math.floor(totalMinutes / 60);
-                        const minutes = totalMinutes % 60;
-                        
-                        console.log('Total minutes:', totalMinutes, 'Hours:', hours, 'Minutes:', minutes);
-                        
-                        if (hours > 0) {
-                            shiftDuration = `(${hours}h ${minutes}m ago)`;
-                        } else {
-                            shiftDuration = `(${minutes}m ago)`;
-                        }
-                    }
-                } catch (e) {
-                    console.error('Error calculating duration:', e);
-                    shiftDuration = '(calculation error)';
-                }
+                console.log('Showing current time as start time:', currentTime);
                 
                 statusDiv.innerHTML = `
                     <div class="active-shift">
                         <p><strong>${this.translator.t('currentlyOnShift')}</strong></p>
-                        <p>${this.translator.t('started')}: ${clockInTime} ${shiftDuration}</p>
+                        <p>${this.translator.t('started')}: ${currentTime} (now)</p>
                         <p>${this.translator.t('startOdometer')}: ${shift.start_odometer} ${this.translator.t('km')}</p>
                     </div>
                 `;
