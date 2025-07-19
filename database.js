@@ -296,6 +296,89 @@ const dbHelpers = {
         }
       );
     });
+  },
+
+  // Get driver's shifts for a specific month
+  getDriverMonthlyShifts: (driverId, year, month) => {
+    return new Promise((resolve, reject) => {
+      db.all(
+        `SELECT * FROM shifts 
+         WHERE driver_id = ? 
+         AND strftime('%Y', clock_in_time) = ?
+         AND strftime('%m', clock_in_time) = ?
+         ORDER BY clock_in_time DESC`,
+        [driverId, year, month.padStart(2, '0')],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+  },
+
+  // Create test data for July 2025
+  createTestData: async (driverId) => {
+    return new Promise((resolve, reject) => {
+      const testShifts = [
+        // July 1, 2025
+        { date: '2025-07-01', startTime: '06:00:00', endTime: '14:30:00', startOdo: 45000, endOdo: 45180 },
+        // July 2, 2025
+        { date: '2025-07-02', startTime: '07:15:00', endTime: '15:45:00', startOdo: 45180, endOdo: 45340 },
+        // July 3, 2025
+        { date: '2025-07-03', startTime: '06:30:00', endTime: '14:00:00', startOdo: 45340, endOdo: 45485 },
+        // July 4, 2025
+        { date: '2025-07-04', startTime: '08:00:00', endTime: '16:30:00', startOdo: 45485, endOdo: 45670 },
+        // July 5, 2025
+        { date: '2025-07-05', startTime: '06:45:00', endTime: '15:15:00', startOdo: 45670, endOdo: 45820 },
+        // July 8, 2025 (skipping weekend)
+        { date: '2025-07-08', startTime: '07:00:00', endTime: '15:30:00', startOdo: 45820, endOdo: 45995 },
+        // July 9, 2025
+        { date: '2025-07-09', startTime: '06:15:00', endTime: '14:45:00', startOdo: 45995, endOdo: 46140 },
+        // July 10, 2025
+        { date: '2025-07-10', startTime: '07:30:00', endTime: '16:00:00', startOdo: 46140, endOdo: 46320 },
+        // July 11, 2025
+        { date: '2025-07-11', startTime: '06:00:00', endTime: '14:30:00', startOdo: 46320, endOdo: 46475 },
+        // July 12, 2025
+        { date: '2025-07-12', startTime: '08:15:00', endTime: '16:45:00', startOdo: 46475, endOdo: 46650 },
+        // July 15, 2025 (skipping weekend)
+        { date: '2025-07-15', startTime: '06:30:00', endTime: '15:00:00', startOdo: 46650, endOdo: 46795 },
+        // July 16, 2025
+        { date: '2025-07-16', startTime: '07:45:00', endTime: '16:15:00', startOdo: 46795, endOdo: 46970 },
+        // July 17, 2025
+        { date: '2025-07-17', startTime: '06:00:00', endTime: '14:30:00', startOdo: 46970, endOdo: 47125 },
+        // July 18, 2025
+        { date: '2025-07-18', startTime: '07:00:00', endTime: '15:30:00', startOdo: 47125, endOdo: 47285 }
+      ];
+
+      let completed = 0;
+      const total = testShifts.length;
+
+      testShifts.forEach(shift => {
+        const clockInTime = `${shift.date} ${shift.startTime}`;
+        const clockOutTime = `${shift.date} ${shift.endTime}`;
+        
+        // Calculate duration
+        const startTime = new Date(`${shift.date}T${shift.startTime}`);
+        const endTime = new Date(`${shift.date}T${shift.endTime}`);
+        const durationMinutes = Math.round((endTime - startTime) / (1000 * 60));
+        const totalDistance = shift.endOdo - shift.startOdo;
+
+        db.run(
+          `INSERT INTO shifts (driver_id, clock_in_time, clock_out_time, start_odometer, end_odometer, total_distance, shift_duration_minutes, status) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, 'completed')`,
+          [driverId, clockInTime, clockOutTime, shift.startOdo, shift.endOdo, totalDistance, durationMinutes],
+          function(err) {
+            if (err) {
+              console.error('Error creating test shift:', err);
+            }
+            completed++;
+            if (completed === total) {
+              resolve(completed);
+            }
+          }
+        );
+      });
+    });
   }
 };
 

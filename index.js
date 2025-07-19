@@ -163,9 +163,36 @@ app.get('/api/driver/shifts/:date?', authenticateToken, async (req, res) => {
   }
 });
 
+app.get('/api/driver/shifts-monthly/:year/:month', authenticateToken, async (req, res) => {
+  try {
+    const driverId = req.user.driverId;
+    const { year, month } = req.params;
+    
+    const shifts = await dbHelpers.getDriverMonthlyShifts(driverId, year, month);
+    res.json({ shifts });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get monthly shifts' });
+  }
+});
+
 // API route for future admin operations  
 app.get('/api/admin', (req, res) => {
   res.json({ message: 'Admin endpoints coming soon!' });
+});
+
+// Create test data for July 2025 (protected route)
+app.post('/api/driver/create-test-data', authenticateToken, async (req, res) => {
+  try {
+    const driverId = req.user.driverId;
+    const shiftsCreated = await dbHelpers.createTestData(driverId);
+    res.json({ 
+      success: true, 
+      message: `Created ${shiftsCreated} test shifts for July 2025`,
+      shiftsCreated 
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create test data' });
+  }
 });
 
 // Serve the main frontend

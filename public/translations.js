@@ -54,6 +54,7 @@ class TranslationManager {
                 startShift: "Start Shift",
                 endShift: "End Shift",
                 viewTodaysShifts: "View Today's Shifts",
+                viewMonthlyShifts: "View Month to Date",
 
                 // Forms
                 startNewShift: "Start New Shift",
@@ -66,6 +67,11 @@ class TranslationManager {
 
                 // Shifts Display
                 todaysShifts: "Today's Shifts",
+                monthlyShifts: "Month to Date Shifts",
+                monthSummary: "Month Summary",
+                totalShifts: "Total Shifts",
+                totalDistance: "Total Distance",
+                totalDuration: "Total Duration",
                 shift: "Shift",
                 start: "Start",
                 end: "End",
@@ -74,7 +80,8 @@ class TranslationManager {
                 minutes: "minutes",
                 km: "km",
                 currentlyActive: "Currently Active",
-                noShiftsToday: "No shifts recorded for today.",
+                noShiftsToday: "No shifts recorded for today",
+                noShiftsThisMonth: "No shifts recorded for this month",
 
                 // Messages
                 loginSuccessful: "Login successful!",
@@ -106,6 +113,7 @@ class TranslationManager {
                 failedToClockOut: "Failed to clock out",
                 failedToLoadShiftStatus: "Failed to load shift status",
                 failedToLoadShifts: "Failed to load shifts",
+                failedToLoadMonthlyShifts: "Failed to load monthly shifts",
                 failedToResendCode: "Failed to resend code. Please try again.",
                 startOdometerMustBeGreaterOrEqual: "Start odometer ({startOdometer}) must be greater than or equal to previous end odometer ({endOdometer})"
             },
@@ -160,6 +168,7 @@ class TranslationManager {
                 startShift: "ஷிஃப்ட் தொடங்கு",
                 endShift: "ஷிஃப்ட் முடிக்கவும்",
                 viewTodaysShifts: "இன்றைய ஷிஃப்ட்களைப் பார்க்கவும்",
+                viewMonthlyShifts: "மாத தேதி வரை காண்க",
 
                 // Forms
                 startNewShift: "புதிய ஷிஃப்ட் தொடங்கவும்",
@@ -172,6 +181,11 @@ class TranslationManager {
 
                 // Shifts Display
                 todaysShifts: "இன்றைய ஷிஃப்ட்கள்",
+                monthlyShifts: "மாத தேதி வரை ஷிஃப்ட்கள்",
+                monthSummary: "மாத சுருக்கம்",
+                totalShifts: "மொத்த ஷிஃப்ட்கள்",
+                totalDistance: "மொத்த தூரம்",
+                totalDuration: "மொத்த கால அளவு",
                 shift: "ஷிஃப்ட்",
                 start: "தொடக்கம்",
                 end: "முடிவு",
@@ -180,7 +194,8 @@ class TranslationManager {
                 minutes: "நிமிடங்கள்",
                 km: "கி.மீ",
                 currentlyActive: "தற்போது செயலில்",
-                noShiftsToday: "இன்றைக்கு ஷிஃப்ட்கள் பதிவு செய்யப்படவில்லை.",
+                noShiftsToday: "இன்றைக்கு எந்த ஷிஃப்ட்களும் பதிவு செய்யப்படவில்லை",
+                noShiftsThisMonth: "இந்த மாதத்திற்கு எந்த ஷிஃப்ட்களும் பதிவு செய்யப்படவில்லை",
 
                 // Field requirements
                 optional: "விருப்பமான",
@@ -212,6 +227,7 @@ class TranslationManager {
                 failedToClockOut: "கடிகாரத்தில் இருந்து வெளியேற முடியவில்லை",
                 failedToLoadShiftStatus: "ஷிஃப்ட் நிலையை ஏற்ற முடியவில்லை",
                 failedToLoadShifts: "ஷிஃப்ட்களை ஏற்ற முடியவில்லை",
+                failedToLoadMonthlyShifts: "மாதாந்திர ஷிஃப்ட்களை ஏற்ற முடியவில்லை",
                 failedToResendCode: "குறியீட்டை மீண்டும் அனுப்ப முடியவில்லை. மீண்டும் முயற்சிக்கவும்.",
                 startOdometerMustBeGreaterOrEqual: "தொடக்க ஓடோமீட்டர் ({startOdometer}) முந்தைய முடிவு ஓடோமீட்டரை ({endOdometer}) விட அதிகமாக அல்லது சமமாக இருக்க வேண்டும்"
             }

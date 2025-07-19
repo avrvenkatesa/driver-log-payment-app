@@ -71,6 +71,8 @@ class DriverApp {
         document.getElementById('clock-in-btn')?.addEventListener('click', () => this.showClockInForm());
         document.getElementById('clock-out-btn')?.addEventListener('click', () => this.showClockOutForm());
         document.getElementById('view-shifts-btn')?.addEventListener('click', () => this.loadShifts());
+        document.getElementById('view-monthly-shifts-btn')?.addEventListener('click', () => this.loadMonthlyShifts());
+        document.getElementById('create-test-data-btn')?.addEventListener('click', () => this.createTestData());
 
         // Form submissions
         document.getElementById('clock-in-form')?.addEventListener('submit', (e) => this.handleClockIn(e));
@@ -186,6 +188,8 @@ class DriverApp {
                 <button id="clock-in-btn" class="action-btn">${this.translator.t('startShift')}</button>
                 <button id="clock-out-btn" class="action-btn">${this.translator.t('endShift')}</button>
                 <button id="view-shifts-btn" class="action-btn">${this.translator.t('viewTodaysShifts')}</button>
+                <button id="view-monthly-shifts-btn" class="action-btn">${this.translator.t('viewMonthlyShifts')}</button>
+                <button id="create-test-data-btn" class="action-btn" style="background-color: #ff9800;">Create Test Data</button>
             </div>
 
             <div id="action-forms" class="forms-container"></div>
@@ -490,6 +494,106 @@ class DriverApp {
         } catch (error) {
             this.showMessage(this.translator.t('failedToLoadShifts'), 'error');
         }
+    }
+
+    async loadMonthlyShifts() {
+        try {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth() + 1;
+            
+            const response = await fetch(`/api/driver/shifts-monthly/${year}/${month}`, {
+                headers: { 'Authorization': `Bearer ${this.token}` }
+            });
+
+            const data = await response.json();
+            const shiftsDiv = document.getElementById('shifts-display');
+
+            if (data.shifts.length > 0) {
+                // Calculate monthly totals
+                const totalDistance = data.shifts.reduce((sum, shift) => sum + (shift.total_distance || 0), 0);
+                const totalDuration = data.shifts.reduce((sum, shift) => sum + (shift.shift_duration_minutes || 0), 0);
+                const totalShifts = data.shifts.length;
+                
+                const totalHours = Math.floor(totalDuration / 60);
+                const totalMins = totalDuration % 60;
+
+                shiftsDiv.innerHTML = `
+                    <div class="shifts-card">
+                        <h3>${this.translator.t('monthlyShifts')} - ${this.getMonthName(month)} ${year}</h3>
+                        <div class="monthly-summary">
+                            <p><strong>${this.translator.t('monthSummary')}:</strong></p>
+                            <p>${this.translator.t('totalShifts')}: ${totalShifts}</p>
+                            <p>${this.translator.t('totalDistance')}: ${totalDistance} ${this.translator.t('km')}</p>
+                            <p>${this.translator.t('totalDuration')}: ${totalHours}h ${totalMins}m</p>
+                        </div>
+                        <hr style="margin: 15px 0;">
+                        ${data.shifts.map(shift => {
+                            const startTime = this.formatToIST(shift.clock_in_time);
+                            const endTime = shift.clock_out_time ? this.formatToIST(shift.clock_out_time) : null;
+                            
+                            // Calculate shift duration in a readable format
+                            let readableDuration = '';
+                            if (shift.shift_duration_minutes) {
+                                const hours = Math.floor(shift.shift_duration_minutes / 60);
+                                const minutes = shift.shift_duration_minutes % 60;
+                                readableDuration = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                            }
+                            
+                            return `
+                                <div class="shift-item">
+                                    <p><strong>${this.translator.t('shift')} #${shift.id}</strong></p>
+                                    <p>${this.translator.t('start')}: ${startTime}</p>
+                                    <p>${this.translator.t('startOdometer')}: ${shift.start_odometer} ${this.translator.t('km')}</p>
+                                    ${shift.clock_out_time ? `
+                                        <p>${this.translator.t('end')}: ${endTime}</p>
+                                        <p>${this.translator.t('endOdometer')}: ${shift.end_odometer} ${this.translator.t('km')}</p>
+                                        <p>${this.translator.t('distance')}: ${shift.total_distance || 0} ${this.translator.t('km')}</p>
+                                        <p>${this.translator.t('duration')}: ${readableDuration || Math.round(shift.shift_duration_minutes || 0) + ' minutes'}</p>
+                                    ` : `<p><strong>${this.translator.t('currentlyActive')}</strong></p>`}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            } else {
+                shiftsDiv.innerHTML = `
+                    <div class="shifts-card">
+                        <h3>${this.translator.t('monthlyShifts')} - ${this.getMonthName(month)} ${year}</h3>
+                        <p>${this.translator.t('noShiftsThisMonth')}</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            this.showMessage(this.translator.t('failedToLoadMonthlyShifts'), 'error');
+        }
+    }
+
+    async createTestData() {
+        try {
+            const response = await fetch('/api/driver/create-test-data', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${this.token}` }
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                this.showMessage(`Created ${data.shiftsCreated} test shifts for July 2025`, 'success');
+            } else {
+                this.showMessage('Failed to create test data', 'error');
+            }
+        } catch (error) {
+            this.showMessage('Failed to create test data', 'error');
+        }
+    }
+
+    getMonthName(month) {
+        const months = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        return months[month - 1];
     }
 
     showMessage(message, type) {
