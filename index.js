@@ -60,7 +60,10 @@ app.post('/api/auth/register', async (req, res) => {
     return res.status(400).json({ error: 'Name and phone number required' });
   }
 
-  const result = await registerDriver(name, phone, email, password);
+  // Handle empty email field
+  const cleanEmail = email && email.trim() !== '' ? email : null;
+  
+  const result = await registerDriver(name, phone, cleanEmail, password);
   
   if (result.success) {
     res.status(201).json(result);
