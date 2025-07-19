@@ -88,6 +88,14 @@ app.post('/api/driver/clock-in', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'You already have an active shift. Please clock out first.' });
     }
 
+    // Check if start odometer is greater than previous end odometer
+    const lastShift = await dbHelpers.getLastCompletedShift(driverId);
+    if (lastShift && lastShift.end_odometer && startOdometer <= lastShift.end_odometer) {
+      return res.status(400).json({ 
+        error: `Start odometer (${startOdometer}) must be greater than previous end odometer (${lastShift.end_odometer})` 
+      });
+    }
+
     const shiftId = await dbHelpers.clockIn(driverId, startOdometer);
     res.json({ 
       success: true, 

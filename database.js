@@ -240,6 +240,25 @@ const dbHelpers = {
         }
       );
     });
+  },
+
+  // Get last completed shift for odometer validation
+  getLastCompletedShift: (driverId) => {
+    return new Promise((resolve, reject) => {
+      db.get(
+        `SELECT * FROM shifts 
+         WHERE driver_id = ? 
+         AND clock_out_time IS NOT NULL 
+         AND end_odometer IS NOT NULL
+         ORDER BY clock_out_time DESC 
+         LIMIT 1`,
+        [driverId],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
   }
 };
 
