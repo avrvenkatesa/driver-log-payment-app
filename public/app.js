@@ -1040,6 +1040,96 @@ class DriverApp {
         document.getElementById('report-results').innerHTML = reportHtml;
     }
 
+    filterShiftsAnalytics() {
+        this.loadShiftsAnalyticsData();
+    }
+
+    async generateDriverReport() {
+        // Placeholder for driver report generation
+        document.getElementById('report-results').innerHTML = `
+            <div class="report-container">
+                <h4>${this.translator.t('driverReport')}</h4>
+                <p>Driver performance reports will be available in a future update.</p>
+            </div>
+        `;
+    }
+
+    async viewDriverDetails(driverId) {
+        try {
+            const response = await fetch(`/api/admin/driver/${driverId}`, {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.displayDriverDetailsModal(data.driver);
+            } else {
+                this.showMessage('Failed to load driver details', 'error');
+            }
+        } catch (error) {
+            this.showMessage('Connection error', 'error');
+        }
+    }
+
+    displayDriverDetailsModal(driver) {
+        const modalHtml = `
+            <div class="modal-overlay" onclick="this.remove()">
+                <div class="modal-content" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>Driver Details - ${driver.name}</h3>
+                        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="driver-detail-grid">
+                            <div class="detail-item">
+                                <strong>ID:</strong> #${driver.id}
+                            </div>
+                            <div class="detail-item">
+                                <strong>Name:</strong> ${driver.name}
+                            </div>
+                            <div class="detail-item">
+                                <strong>Phone:</strong> ${driver.phone}
+                            </div>
+                            <div class="detail-item">
+                                <strong>Email:</strong> ${driver.email || 'Not provided'}
+                            </div>
+                            <div class="detail-item">
+                                <strong>Status:</strong> 
+                                <span class="status-badge ${driver.is_active ? 'active' : 'inactive'}">
+                                    ${driver.is_active ? 'Active' : 'Inactive'}
+                                </span>
+                            </div>
+                            <div class="detail-item">
+                                <strong>Verified:</strong> 
+                                <span class="status-badge ${driver.is_phone_verified ? 'verified' : 'unverified'}">
+                                    ${driver.is_phone_verified ? 'Verified' : 'Unverified'}
+                                </span>
+                            </div>
+                            <div class="detail-item">
+                                <strong>Join Date:</strong> ${this.formatToIST(driver.created_at)}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    confirmAction(action) {
+        const actionText = action === 'backup' ? 'backup all data' : 'clear all test data';
+        if (confirm(`Are you sure you want to ${actionText}? This action cannot be undone.`)) {
+            if (action === 'backup') {
+                this.showMessage('Backup functionality will be available in a future update', 'info');
+            } else {
+                this.showMessage('Clear test data functionality will be available in a future update', 'info');
+            }
+        }
+    }
+
     loadSettings() {
         const content = document.getElementById('admin-content');
         content.innerHTML = `
