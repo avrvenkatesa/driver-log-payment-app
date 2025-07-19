@@ -4,11 +4,13 @@ class DriverApp {
         this.token = localStorage.getItem('authToken');
         this.currentUser = null;
         this.pendingPhone = null; // Store phone number temporarily during verification
+        this.translator = new TranslationManager();
         this.init();
     }
 
     async init() {
         await this.checkHealthStatus();
+        this.initializeLanguage();
         this.setupEventListeners();
 
         if (this.token) {
@@ -19,7 +21,41 @@ class DriverApp {
         }
     }
 
+    initializeLanguage() {
+        const languageSelector = document.getElementById('language-selector');
+        if (languageSelector) {
+            languageSelector.value = this.translator.getCurrentLanguage();
+        }
+        this.updateLanguage();
+    }
+
+    updateLanguage() {
+        // Update static elements
+        document.getElementById('app-title').textContent = this.translator.t('appTitle');
+        document.getElementById('driver-tab').textContent = this.translator.t('driverDashboard');
+        document.getElementById('admin-tab').textContent = this.translator.t('adminPanel');
+        
+        // Update health status if visible
+        const healthStatus = document.getElementById('health-status');
+        if (healthStatus && healthStatus.textContent.includes('running')) {
+            healthStatus.textContent = this.translator.t('serverHealthy');
+        }
+
+        // Refresh current view
+        if (this.token) {
+            this.showDriverDashboard();
+        } else {
+            this.showAuthScreen();
+        }
+    }
+
     setupEventListeners() {
+        // Language switching
+        document.getElementById('language-selector')?.addEventListener('change', (e) => {
+            this.translator.setLanguage(e.target.value);
+            this.updateLanguage();
+        });
+
         // Tab switching
         document.getElementById('driver-tab')?.addEventListener('click', () => this.switchTab('driver'));
         document.getElementById('admin-tab')?.addEventListener('click', () => this.switchTab('admin'));
@@ -95,36 +131,36 @@ class DriverApp {
         document.getElementById('driver-section').innerHTML = `
             <div class="auth-container">
                 <div class="auth-card">
-                    <h2 id="auth-title">Driver Login</h2>
+                    <h2 id="auth-title">${this.translator.t('driverLogin')}</h2>
 
                     <form id="login-form" class="auth-form">
-                        <input type="email" id="login-email" placeholder="Email" required>
-                        <input type="password" id="login-password" placeholder="Password" required>
-                        <button type="submit" class="auth-btn">Login</button>
+                        <input type="email" id="login-email" placeholder="${this.translator.t('email')}" required>
+                        <input type="password" id="login-password" placeholder="${this.translator.t('password')}" required>
+                        <button type="submit" class="auth-btn">${this.translator.t('login')}</button>
                         <p class="auth-toggle">
-                            Don't have an account? 
-                            <a href="#" id="show-register">Register here</a>
+                            ${this.translator.t('dontHaveAccount')} 
+                            <a href="#" id="show-register">${this.translator.t('registerHere')}</a>
                         </p>
                     </form>
 
                     <form id="register-form" class="auth-form">
-                        <input type="text" id="register-name" placeholder="Full Name" required>
-                        <input type="tel" id="register-phone" placeholder="Phone Number" required>
-                        <input type="email" id="register-email" placeholder="Email">
-                        <input type="password" id="register-password" placeholder="Password" required>
-                        <button type="submit" class="auth-btn">Register</button>
+                        <input type="text" id="register-name" placeholder="${this.translator.t('fullName')}" required>
+                        <input type="tel" id="register-phone" placeholder="${this.translator.t('phone')}" required>
+                        <input type="email" id="register-email" placeholder="${this.translator.t('email')}">
+                        <input type="password" id="register-password" placeholder="${this.translator.t('password')}" required>
+                        <button type="submit" class="auth-btn">${this.translator.t('register')}</button>
                         <p class="auth-toggle">
-                            Already have an account? 
-                            <a href="#" id="show-login">Login here</a>
+                            ${this.translator.t('alreadyHaveAccount')} 
+                            <a href="#" id="show-login">${this.translator.t('loginHere')}</a>
                         </p>
                     </form>
 
                     <form id="verify-form" class="auth-form hidden">
-                        <p>Please enter the verification code sent to your phone.</p>
-                        <input type="tel" id="verify-phone" placeholder="Phone Number" readonly>
-                        <input type="text" id="verify-code" placeholder="Verification Code" required>
-                        <button type="submit" class="auth-btn">Verify</button>
-                        <button type="button" id="resend-code" class="cancel-btn">Resend Code</button>
+                        <p>${this.translator.t('enterVerificationCode')}</p>
+                        <input type="tel" id="verify-phone" placeholder="${this.translator.t('phone')}" readonly>
+                        <input type="text" id="verify-code" placeholder="${this.translator.t('verificationCode')}" required>
+                        <button type="submit" class="auth-btn">${this.translator.t('verify')}</button>
+                        <button type="button" id="resend-code" class="cancel-btn">${this.translator.t('resendCode')}</button>
                     </form>
 
                 </div>
@@ -136,25 +172,25 @@ class DriverApp {
     showDriverDashboard() {
         document.getElementById('driver-section').innerHTML = `
             <div class="dashboard-header">
-                <h2>Welcome, ${this.currentUser?.name || 'Driver'}!</h2>
-                <button id="logout-btn" class="logout-btn">Logout</button>
+                <h2>${this.translator.t('welcome')}, ${this.currentUser?.name || this.translator.t('driverDashboard')}!</h2>
+                <button id="logout-btn" class="logout-btn">${this.translator.t('logout')}</button>
             </div>
 
             <div class="status-card">
-                <h3>System Status</h3>
-                <div id="health-status">Checking...</div>
+                <h3>${this.translator.t('systemStatus')}</h3>
+                <div id="health-status">${this.translator.t('checking')}</div>
             </div>
 
             <div class="shift-status-card">
-                <h3>Shift Status</h3>
-                <div id="shift-status">Loading...</div>
+                <h3>${this.translator.t('shiftStatus')}</h3>
+                <div id="shift-status">${this.translator.t('checking')}</div>
             </div>
 
             <div class="feature-card">
-                <h3>Quick Actions</h3>
-                <button id="clock-in-btn" class="action-btn">Start Shift</button>
-                <button id="clock-out-btn" class="action-btn">End Shift</button>
-                <button id="view-shifts-btn" class="action-btn">View Today's Shifts</button>
+                <h3>${this.translator.t('quickActions')}</h3>
+                <button id="clock-in-btn" class="action-btn">${this.translator.t('startShift')}</button>
+                <button id="clock-out-btn" class="action-btn">${this.translator.t('endShift')}</button>
+                <button id="view-shifts-btn" class="action-btn">${this.translator.t('viewTodaysShifts')}</button>
             </div>
 
             <div id="action-forms" class="forms-container"></div>
@@ -175,12 +211,12 @@ class DriverApp {
             loginForm.classList.remove('hidden');
             registerForm.classList.add('hidden');
             verifyForm.classList.add('hidden');
-            authTitle.textContent = 'Driver Login';
+            authTitle.textContent = this.translator.t('driverLogin');
         } else {
             loginForm.classList.add('hidden');
             registerForm.classList.remove('hidden');
             verifyForm.classList.add('hidden');
-            authTitle.textContent = 'Driver Registration';
+            authTitle.textContent = this.translator.t('driverRegistration');
         }
     }
 
@@ -203,12 +239,12 @@ class DriverApp {
                 localStorage.setItem('authToken', this.token);
                 this.currentUser = data.driver;
                 this.showDriverDashboard();
-                this.showMessage('Login successful!', 'success');
+                this.showMessage(this.translator.t('loginSuccessful'), 'success');
             } else {
                 this.showMessage(data.error, 'error');
             }
         } catch (error) {
-            this.showMessage('Login failed. Please try again.', 'error');
+            this.showMessage(this.translator.t('loginFailed'), 'error');
         }
     }
 
@@ -231,15 +267,15 @@ class DriverApp {
             if (response.ok && data.requiresVerification) {
                 this.pendingPhone = phone;
                 this.showVerificationForm();
-                this.showMessage('Registration successful! Please verify your phone.', 'success');
+                this.showMessage(this.translator.t('registrationWithVerification'), 'success');
             } else if (response.ok) {
-                this.showMessage('Registration successful! Please login.', 'success');
+                this.showMessage(this.translator.t('registrationSuccessful'), 'success');
                 this.toggleAuthMode();
             } else {
                 this.showMessage(data.error, 'error');
             }
         } catch (error) {
-            this.showMessage('Registration failed. Please try again.', 'error');
+            this.showMessage(this.translator.t('registrationFailed'), 'error');
         }
     }
 
@@ -268,13 +304,13 @@ class DriverApp {
             const data = await response.json();
 
             if (response.ok) {
-                this.showMessage('Phone verified successfully! You can now login.', 'success');
+                this.showMessage(this.translator.t('phoneVerifiedSuccessfully'), 'success');
                 this.showAuthScreen(); // Go back to login
             } else {
                 this.showMessage(data.error, 'error');
             }
         } catch (error) {
-            this.showMessage('Verification failed. Please try again.', 'error');
+            this.showMessage(this.translator.t('verificationFailed'), 'error');
         }
     }
 
@@ -291,12 +327,12 @@ class DriverApp {
             const data = await response.json();
 
             if (response.ok) {
-                this.showMessage('New verification code sent!', 'success');
+                this.showMessage(this.translator.t('verificationCodeSent'), 'success');
             } else {
                 this.showMessage(data.error, 'error');
             }
         } catch (error) {
-            this.showMessage('Failed to resend code. Please try again.', 'error');
+            this.showMessage(this.translator.t('failedToResendCode'), 'error');
         }
     }
 
@@ -330,9 +366,9 @@ class DriverApp {
                 const shift = data.activeShift;
                 statusDiv.innerHTML = `
                     <div class="active-shift">
-                        <p><strong>🟢 Currently on shift</strong></p>
-                        <p>Started: ${new Date(shift.clock_in_time).toLocaleString()}</p>
-                        <p>Start Odometer: ${shift.start_odometer} km</p>
+                        <p><strong>${this.translator.t('currentlyOnShift')}</strong></p>
+                        <p>${this.translator.t('started')}: ${new Date(shift.clock_in_time).toLocaleString()}</p>
+                        <p>${this.translator.t('startOdometer')}: ${shift.start_odometer} ${this.translator.t('km')}</p>
                     </div>
                 `;
                 document.getElementById('clock-in-btn').disabled = true;
@@ -340,27 +376,27 @@ class DriverApp {
             } else {
                 statusDiv.innerHTML = `
                     <div class="no-shift">
-                        <p><strong>⭕ Not on shift</strong></p>
-                        <p>Ready to start a new shift</p>
+                        <p><strong>${this.translator.t('notOnShift')}</strong></p>
+                        <p>${this.translator.t('readyForNewShift')}</p>
                     </div>
                 `;
                 document.getElementById('clock-in-btn').disabled = false;
                 document.getElementById('clock-out-btn').disabled = true;
             }
         } catch (error) {
-            this.showMessage('Failed to load shift status', 'error');
+            this.showMessage(this.translator.t('failedToLoadShiftStatus'), 'error');
         }
     }
 
     showClockInForm() {
         document.getElementById('action-forms').innerHTML = `
             <div class="form-card">
-                <h3>Start New Shift</h3>
+                <h3>${this.translator.t('startNewShift')}</h3>
                 <form id="clock-in-form">
-                    <label for="start-odometer">Starting Odometer Reading (km):</label>
+                    <label for="start-odometer">${this.translator.t('startingOdometerReading')}</label>
                     <input type="number" id="start-odometer" required min="0" step="1">
-                    <button type="submit" class="action-btn">Clock In</button>
-                    <button type="button" class="cancel-btn" onclick="this.parentElement.parentElement.remove()">Cancel</button>
+                    <button type="submit" class="action-btn">${this.translator.t('clockIn')}</button>
+                    <button type="button" class="cancel-btn" onclick="this.parentElement.parentElement.remove()">${this.translator.t('cancel')}</button>
                 </form>
             </div>
         `;
@@ -370,12 +406,12 @@ class DriverApp {
     showClockOutForm() {
         document.getElementById('action-forms').innerHTML = `
             <div class="form-card">
-                <h3>End Current Shift</h3>
+                <h3>${this.translator.t('endCurrentShift')}</h3>
                 <form id="clock-out-form">
-                    <label for="end-odometer">Ending Odometer Reading (km):</label>
+                    <label for="end-odometer">${this.translator.t('endingOdometerReading')}</label>
                     <input type="number" id="end-odometer" required min="0" step="1">
-                    <button type="submit" class="action-btn">Clock Out</button>
-                    <button type="button" class="cancel-btn" onclick="this.parentElement.parentElement.remove()">Cancel</button>
+                    <button type="submit" class="action-btn">${this.translator.t('clockOut')}</button>
+                    <button type="button" class="cancel-btn" onclick="this.parentElement.parentElement.remove()">${this.translator.t('cancel')}</button>
                 </form>
             </div>
         `;
@@ -399,14 +435,14 @@ class DriverApp {
             const data = await response.json();
 
             if (response.ok) {
-                this.showMessage('Clocked in successfully!', 'success');
+                this.showMessage(this.translator.t('clockedInSuccessfully'), 'success');
                 document.getElementById('action-forms').innerHTML = '';
                 this.loadDriverStatus();
             } else {
                 this.showMessage(data.error, 'error');
             }
         } catch (error) {
-            this.showMessage('Failed to clock in', 'error');
+            this.showMessage(this.translator.t('failedToClockIn'), 'error');
         }
     }
 
@@ -427,14 +463,14 @@ class DriverApp {
             const data = await response.json();
 
             if (response.ok) {
-                this.showMessage('Clocked out successfully!', 'success');
+                this.showMessage(this.translator.t('clockedOutSuccessfully'), 'success');
                 document.getElementById('action-forms').innerHTML = '';
                 this.loadDriverStatus();
             } else {
                 this.showMessage(data.error, 'error');
             }
         } catch (error) {
-            this.showMessage('Failed to clock out', 'error');
+            this.showMessage(this.translator.t('failedToClockOut'), 'error');
         }
     }
 
@@ -450,16 +486,16 @@ class DriverApp {
             if (data.shifts.length > 0) {
                 shiftsDiv.innerHTML = `
                     <div class="shifts-card">
-                        <h3>Today's Shifts</h3>
+                        <h3>${this.translator.t('todaysShifts')}</h3>
                         ${data.shifts.map(shift => `
                             <div class="shift-item">
-                                <p><strong>Shift #${shift.id}</strong></p>
-                                <p>Start: ${new Date(shift.clock_in_time).toLocaleString()}</p>
+                                <p><strong>${this.translator.t('shift')} #${shift.id}</strong></p>
+                                <p>${this.translator.t('start')}: ${new Date(shift.clock_in_time).toLocaleString()}</p>
                                 ${shift.clock_out_time ? `
-                                    <p>End: ${new Date(shift.clock_out_time).toLocaleString()}</p>
-                                    <p>Distance: ${shift.total_distance || 0} km</p>
-                                    <p>Duration: ${Math.round(shift.shift_duration_minutes || 0)} minutes</p>
-                                ` : '<p><strong>Currently Active</strong></p>'}
+                                    <p>${this.translator.t('end')}: ${new Date(shift.clock_out_time).toLocaleString()}</p>
+                                    <p>${this.translator.t('distance')}: ${shift.total_distance || 0} ${this.translator.t('km')}</p>
+                                    <p>${this.translator.t('duration')}: ${Math.round(shift.shift_duration_minutes || 0)} ${this.translator.t('minutes')}</p>
+                                ` : `<p><strong>${this.translator.t('currentlyActive')}</strong></p>`}
                             </div>
                         `).join('')}
                     </div>
@@ -467,13 +503,13 @@ class DriverApp {
             } else {
                 shiftsDiv.innerHTML = `
                     <div class="shifts-card">
-                        <h3>Today's Shifts</h3>
-                        <p>No shifts recorded for today.</p>
+                        <h3>${this.translator.t('todaysShifts')}</h3>
+                        <p>${this.translator.t('noShiftsToday')}</p>
                     </div>
                 `;
             }
         } catch (error) {
-            this.showMessage('Failed to load shifts', 'error');
+            this.showMessage(this.translator.t('failedToLoadShifts'), 'error');
         }
     }
 
