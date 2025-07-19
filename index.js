@@ -42,8 +42,8 @@ app.use('*', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚛 Driver Log & Payment App running on port ${PORT}`);
-  console.log(`📱 Frontend: http://localhost:${PORT}`);
-  console.log(`🔌 API: http://localhost:${PORT}/api/health`);
+  console.log(`📱 Frontend: http://0.0.0.0:${PORT}`);
+  console.log(`🔌 API: http://0.0.0.0:${PORT}/api/health`);
 });
