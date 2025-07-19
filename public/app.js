@@ -298,10 +298,10 @@ class DriverApp {
                 statusDiv.innerHTML = `
                     <div class="active-shift">
                         <p><strong>${this.translator.t('currentlyOnShift')}</strong></p>
-                        <p>${this.translator.t('started')}: ${new Date(shift.clock_in_time).toLocaleString('en-GB', { 
+                        <p>${this.translator.t('started')}: ${new Date(shift.clock_in_time).toLocaleString('en-IN', { 
                             timeZone: 'Asia/Kolkata',
                             year: 'numeric',
-                            month: '2-digit', 
+                            month: '2-digit',
                             day: '2-digit',
                             hour: '2-digit',
                             minute: '2-digit',
