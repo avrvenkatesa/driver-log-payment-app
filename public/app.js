@@ -95,11 +95,13 @@ class DriverApp {
             adminTab.classList.remove('active');
             driverSection.classList.add('active');
             adminSection.classList.remove('active');
+            this.showDriverDashboard();
         } else {
             adminTab.classList.add('active');
             driverTab.classList.remove('active');
             adminSection.classList.add('active');
             driverSection.classList.remove('active');
+            this.showAdminPanel();
         }
     }
 
@@ -299,28 +301,28 @@ class DriverApp {
 
             if (data.hasActiveShift) {
                 const shift = data.activeShift;
-                
+
                 // Debug logging
                 console.log('Server timestamp:', shift.clock_in_time);
-                
+
                 // Use the actual stored start time
                 const clockInTime = this.formatToIST(shift.clock_in_time);
-                
+
                 // Calculate how long the shift has been running
                 let shiftDuration = '';
                 try {
                     const startTime = new Date(shift.clock_in_time);
                     const now = new Date();
-                    
+
                     const diffMs = now - startTime;
-                    
+
                     if (diffMs < 0) {
                         shiftDuration = '(just started)';
                     } else {
                         const totalMinutes = Math.floor(diffMs / (1000 * 60));
                         const hours = Math.floor(totalMinutes / 60);
                         const minutes = totalMinutes % 60;
-                        
+
                         if (hours > 0) {
                             shiftDuration = `(${hours}h ${minutes}m ago)`;
                         } else {
@@ -331,7 +333,7 @@ class DriverApp {
                     console.error('Error calculating duration:', e);
                     shiftDuration = '(calculation error)';
                 }
-                
+
                 statusDiv.innerHTML = `
                     <div class="active-shift">
                         <p><strong>${this.translator.t('currentlyOnShift')}</strong></p>
@@ -458,7 +460,7 @@ class DriverApp {
                         ${data.shifts.map(shift => {
                             const startTime = this.formatToIST(shift.clock_in_time);
                             const endTime = shift.clock_out_time ? this.formatToIST(shift.clock_out_time) : null;
-                            
+
                             // Calculate shift duration in a readable format
                             let readableDuration = '';
                             if (shift.shift_duration_minutes) {
@@ -466,7 +468,7 @@ class DriverApp {
                                 const minutes = shift.shift_duration_minutes % 60;
                                 readableDuration = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
                             }
-                            
+
                             return `
                                 <div class="shift-item">
                                     <p><strong>${this.translator.t('shift')} #${shift.id}</strong></p>
@@ -501,7 +503,7 @@ class DriverApp {
             const now = new Date();
             const year = now.getFullYear();
             const month = now.getMonth() + 1;
-            
+
             const response = await fetch(`/api/driver/shifts-monthly/${year}/${month}`, {
                 headers: { 'Authorization': `Bearer ${this.token}` }
             });
@@ -514,7 +516,7 @@ class DriverApp {
                 const totalDistance = data.shifts.reduce((sum, shift) => sum + (shift.total_distance || 0), 0);
                 const totalDuration = data.shifts.reduce((sum, shift) => sum + (shift.shift_duration_minutes || 0), 0);
                 const totalShifts = data.shifts.length;
-                
+
                 const totalHours = Math.floor(totalDuration / 60);
                 const totalMins = totalDuration % 60;
 
@@ -531,7 +533,7 @@ class DriverApp {
                         ${data.shifts.map(shift => {
                             const startTime = this.formatToIST(shift.clock_in_time);
                             const endTime = shift.clock_out_time ? this.formatToIST(shift.clock_out_time) : null;
-                            
+
                             // Calculate shift duration in a readable format
                             let readableDuration = '';
                             if (shift.shift_duration_minutes) {
@@ -539,7 +541,7 @@ class DriverApp {
                                 const minutes = shift.shift_duration_minutes % 60;
                                 readableDuration = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
                             }
-                            
+
                             return `
                                 <div class="shift-item">
                                     <p><strong>${this.translator.t('shift')} #${shift.id}</strong></p>
@@ -610,18 +612,18 @@ class DriverApp {
 
     formatToIST(timestamp) {
         if (!timestamp) return null;
-        
+
         try {
             // Server now sends IST timestamps in format "2025-07-19 06:46:56"
             // Parse as local time since they are already in IST
             const date = new Date(timestamp);
-            
+
             // Check if the date is valid
             if (isNaN(date.getTime())) {
                 console.error('Invalid timestamp:', timestamp);
                 return 'Invalid Date';
             }
-            
+
             // Format as IST
             const formatter = new Intl.DateTimeFormat('en-IN', {
                 year: 'numeric',
@@ -632,9 +634,9 @@ class DriverApp {
                 second: '2-digit',
                 hour12: false
             });
-            
+
             return formatter.format(date);
-            
+
         } catch (error) {
             console.error('Error formatting date:', error, timestamp);
             return 'Error formatting date';
@@ -645,19 +647,19 @@ class DriverApp {
         if (typeof errorResponse === 'string') {
             return this.translator.t(errorResponse);
         }
-        
+
         if (errorResponse.error) {
             let errorMsg = this.translator.t(errorResponse.error);
-            
+
             // Handle errors that need data interpolation
             if (errorResponse.data && errorResponse.error === 'startOdometerMustBeGreater') {
                 errorMsg = errorMsg.replace('{startOdometer}', errorResponse.data.startOdometer)
                               .replace('{endOdometer}', errorResponse.data.endOdometer);
             }
-            
+
             return errorMsg;
         }
-        
+
         return errorResponse;
     }
 
@@ -667,9 +669,436 @@ class DriverApp {
         this.currentUser = null;
         this.showAuthScreen();
     }
+
+    showAdminPanel() {
+        document.getElementById('admin-section').innerHTML = `
+            <div class="admin-container">
+                <h2>${this.translator.t('adminPanel')}</h2>
+
+                <div class="admin-tabs">
+                    <button id="drivers-tab" class="admin-tab-btn active" onclick="app.showAdminTab('drivers')">${this.translator.t('drivers')}</button>
+                    <button id="shifts-tab" class="admin-tab-btn" onclick="app.showAdminTab('shifts')">${this.translator.t('shifts')}</button>
+                    <button id="reports-tab" class="admin-tab-btn" onclick="app.showAdminTab('reports')">${this.translator.t('reports')}</button>
+                    <button id="settings-tab" class="admin-tab-btn" onclick="app.showAdminTab('settings')">${this.translator.t('settings')}</button>
+                </div>
+
+                <div id="admin-content">
+                    <!-- Content will be loaded here -->
+                </div>
+            </div>
+        `;
+
+        this.showAdminTab('drivers');
+    }
+
+    showAdminTab(tab) {
+        // Update tab buttons
+        document.querySelectorAll('.admin-tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`${tab}-tab`).classList.add('active');
+
+        switch(tab) {
+            case 'drivers':
+                this.loadDriversManagement();
+                break;
+            case 'shifts':
+                this.loadShiftsAnalytics();
+                break;
+            case 'reports':
+                this.loadReports();
+                break;
+            case 'settings':
+                this.loadSettings();
+                break;
+        }
+    }
+
+    async loadDriversManagement() {
+        const content = document.getElementById('admin-content');
+        content.innerHTML = `
+            <div class="admin-section-content">
+                <div class="section-header">
+                    <h3>${this.translator.t('driversManagement')}</h3>
+                    <button class="action-btn secondary" onclick="app.loadDriversData()">
+                        ${this.translator.t('refresh')}
+                    </button>
+                </div>
+                <div id="drivers-list" class="data-table-container">
+                    <div class="loading">${this.translator.t('loading')}...</div>
+                </div>
+            </div>
+        `;
+
+        await this.loadDriversData();
+    }
+
+    async loadDriversData() {
+        try {
+            const response = await fetch('/api/admin/drivers', {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.displayDriversTable(data.drivers);
+            } else {
+                document.getElementById('drivers-list').innerHTML = 
+                    `<div class="error">${this.translator.t('failedToLoadDrivers')}</div>`;
+            }
+        } catch (error) {
+            document.getElementById('drivers-list').innerHTML = 
+                `<div class="error">${this.translator.t('connectionError')}</div>`;
+        }
+    }
+
+    displayDriversTable(drivers) {
+        const tableHtml = `
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>${this.translator.t('id')}</th>
+                        <th>${this.translator.t('name')}</th>
+                        <th>${this.translator.t('phone')}</th>
+                        <th>${this.translator.t('email')}</th>
+                        <th>${this.translator.t('verified')}</th>
+                        <th>${this.translator.t('status')}</th>
+                        <th>${this.translator.t('joinDate')}</th>
+                        <th>${this.translator.t('actions')}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${drivers.map(driver => `
+                        <tr>
+                            <td>#${driver.id}</td>
+                            <td>${driver.name}</td>
+                            <td>${driver.phone}</td>
+                            <td>${driver.email || '-'}</td>
+                            <td><span class="status-badge ${driver.is_phone_verified ? 'verified' : 'unverified'}">
+                                ${driver.is_phone_verified ? this.translator.t('verified') : this.translator.t('unverified')}
+                            </span></td>
+                            <td><span class="status-badge ${driver.is_active ? 'active' : 'inactive'}">
+                                ${driver.is_active ? this.translator.t('active') : this.translator.t('inactive')}
+                            </span></td>
+                            <td>${this.formatToIST(driver.created_at)}</td>
+                            <td>
+                                <button class="btn-small" onclick="app.viewDriverDetails(${driver.id})">
+                                    ${this.translator.t('view')}
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+
+        document.getElementById('drivers-list').innerHTML = tableHtml;
+    }
+
+    async loadShiftsAnalytics() {
+        const content = document.getElementById('admin-content');
+        content.innerHTML = `
+            <div class="admin-section-content">
+                <div class="section-header">
+                    <h3>${this.translator.t('shiftsAnalytics')}</h3>
+                    <div class="filter-controls">
+                        <select id="analytics-filter" onchange="app.filterShiftsAnalytics()">
+                            <option value="today">${this.translator.t('today')}</option>
+                            <option value="week">${this.translator.t('thisWeek')}</option>
+                            <option value="month">${this.translator.t('thisMonth')}</option>
+                            <option value="all">${this.translator.t('allTime')}</option>
+                        </select>
+                        <button class="action-btn secondary" onclick="app.loadShiftsAnalyticsData()">
+                            ${this.translator.t('refresh')}
+                        </button>
+                    </div>
+                </div>
+
+                <div id="analytics-summary" class="analytics-cards">
+                    <!-- Summary cards will be loaded here -->
+                </div>
+
+                <div id="shifts-analytics-list" class="data-table-container">
+                    <div class="loading">${this.translator.t('loading')}...</div>
+                </div>
+            </div>
+        `;
+
+        await this.loadShiftsAnalyticsData();
+    }
+
+    async loadShiftsAnalyticsData() {
+        try {
+            const filter = document.getElementById('analytics-filter')?.value || 'today';
+            const response = await fetch(`/api/admin/shifts?filter=${filter}`, {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.displayAnalyticsSummary(data.summary);
+                this.displayShiftsAnalyticsTable(data.shifts);
+            } else {
+                document.getElementById('shifts-analytics-list').innerHTML = 
+                    `<div class="error">${this.translator.t('failedToLoadShifts')}</div>`;
+            }
+        } catch (error) {
+            document.getElementById('shifts-analytics-list').innerHTML = 
+                `<div class="error">${this.translator.t('connectionError')}</div>`;
+        }
+    }
+
+    displayAnalyticsSummary(summary) {
+        const summaryHtml = `
+            <div class="analytics-card">
+                <h4>${this.translator.t('totalShifts')}</h4>
+                <div class="stat-value">${summary.totalShifts || 0}</div>
+            </div>
+            <div class="analytics-card">
+                <h4>${this.translator.t('totalDistance')}</h4>
+                <div class="stat-value">${summary.totalDistance || 0} ${this.translator.t('km')}</div>
+            </div>
+            <div class="analytics-card">
+                <h4>${this.translator.t('totalHours')}</h4>
+                <div class="stat-value">${Math.round((summary.totalMinutes || 0) / 60 * 10) / 10}h</div>
+            </div>
+            <div class="analytics-card">
+                <h4>${this.translator.t('activeDrivers')}</h4>
+                <div class="stat-value">${summary.activeDrivers || 0}</div>
+            </div>
+        `;
+
+        document.getElementById('analytics-summary').innerHTML = summaryHtml;
+    }
+
+    displayShiftsAnalyticsTable(shifts) {
+        const tableHtml = `
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>${this.translator.t('shiftId')}</th>
+                        <th>${this.translator.t('driver')}</th>
+                        <th>${this.translator.t('start')}</th>
+                        <th>${this.translator.t('end')}</th>
+                        <th>${this.translator.t('startOdometer')}</th>
+                        <th>${this.translator.t('endOdometer')}</th>
+                        <th>${this.translator.t('distance')}</th>
+                        <th>${this.translator.t('duration')}</th>
+                        <th>${this.translator.t('status')}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${shifts.map(shift => `
+                        <tr>
+                            <td>#${shift.id}</td>
+                            <td>${shift.driver_name}</td>
+                            <td>${this.formatToIST(shift.clock_in_time)}</td>
+                            <td>${shift.clock_out_time ? this.formatToIST(shift.clock_out_time) : '-'}</td>
+                            <td>${shift.start_odometer} ${this.translator.t('km')}</td>
+                            <td>${shift.end_odometer ? shift.end_odometer + ' ' + this.translator.t('km') : '-'}</td>
+                            <td>${shift.total_distance || 0} ${this.translator.t('km')}</td>
+                            <td>${shift.shift_duration_minutes ? Math.round(shift.shift_duration_minutes / 60 * 10) / 10 + 'h' : '-'}</td>
+                            <td><span class="status-badge ${shift.status || 'active'}">
+                                ${shift.status === 'completed' ? this.translator.t('completed') : this.translator.t('active')}
+                            </span></td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+
+        document.getElementById('shifts-analytics-list').innerHTML = tableHtml;
+    }
+
+    async loadReports() {
+        const content = document.getElementById('admin-content');
+        content.innerHTML = `
+            <div class="admin-section-content">
+                <div class="section-header">
+                    <h3>${this.translator.t('reports')}</h3>
+                </div>
+
+                <div class="reports-grid">
+                    <div class="report-card">
+                        <h4>${this.translator.t('monthlyReport')}</h4>
+                        <p>${this.translator.t('monthlyReportDesc')}</p>
+                        <div class="report-controls">
+                            <select id="report-month">
+                                <option value="1">January</option>
+                                <option value="2">February</option>
+                                <option value="3">March</option>
+                                <option value="4">April</option>
+                                <option value="5">May</option>
+                                <option value="6">June</option>
+                                <option value="7" selected>July</option>
+                                <option value="8">August</option>
+                                <option value="9">September</option>
+                                <option value="10">October</option>
+                                <option value="11">November</option>
+                                <option value="12">December</option>
+                            </select>
+                            <select id="report-year">
+                                <option value="2024">2024</option>
+                                <option value="2025" selected>2025</option>
+                                <option value="2026">2026</option>
+                            </select>
+                            <button class="action-btn" onclick="app.generateMonthlyReport()">
+                                ${this.translator.t('generate')}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="report-card">
+                        <h4>${this.translator.t('driverReport')}</h4>
+                        <p>${this.translator.t('driverReportDesc')}</p>
+                        <button class="action-btn" onclick="app.generateDriverReport()">
+                            ${this.translator.t('generate')}
+                        </button>
+                    </div>
+                </div>
+
+                <div id="report-results" class="report-results">
+                    <!-- Generated reports will appear here -->
+                </div>
+            </div>
+        `;
+    }
+
+    async generateMonthlyReport() {
+        const month = document.getElementById('report-month').value;
+        const year = document.getElementById('report-year').value;
+
+        try {
+            const response = await fetch(`/api/admin/reports/monthly?month=${month}&year=${year}`, {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.displayMonthlyReport(data);
+            } else {
+                document.getElementById('report-results').innerHTML = 
+                    `<div class="error">${this.translator.t('failedToGenerateReport')}</div>`;
+            }
+        } catch (error) {
+            document.getElementById('report-results').innerHTML = 
+                `<div class="error">${this.translator.t('connectionError')}</div>`;
+        }
+    }
+
+    displayMonthlyReport(data) {
+        const reportHtml = `
+            <div class="report-container">
+                <h4>${this.translator.t('monthlyReport')} - ${data.month}/${data.year}</h4>
+
+                <div class="report-summary">
+                    <div class="summary-item">
+                        <span>${this.translator.t('totalShifts')}:</span>
+                        <strong>${data.summary.totalShifts}</strong>
+                    </div>
+                    <div class="summary-item">
+                        <span>${this.translator.t('totalHours')}:</span>
+                        <strong>${Math.round(data.summary.totalMinutes / 60 * 10) / 10}h</strong>
+                    </div>
+                    <div class="summary-item">
+                        <span>${this.translator.t('totalDistance')}:</span>
+                        <strong>${data.summary.totalDistance} ${this.translator.t('km')}</strong>
+                    </div>
+                    <div class="summary-item">
+                        <span>${this.translator.t('avgShiftLength')}:</span>
+                        <strong>${Math.round(data.summary.avgShiftMinutes / 60 * 10) / 10}h</strong>
+                    </div>
+                </div>
+
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th>${this.translator.t('date')}</th>
+                            <th>${this.translator.t('shifts')}</th>
+                            <th>${this.translator.t('hours')}</th>
+                            <th>${this.translator.t('distance')}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.dailyBreakdown.map(day => `
+                            <tr>
+                                <td>${day.date}</td>
+                                <td>${day.shifts}</td>
+                                <td>${Math.round(day.minutes / 60 * 10) / 10}h</td>
+                                <td>${day.distance} ${this.translator.t('km')}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        document.getElementById('report-results').innerHTML = reportHtml;
+    }
+
+    loadSettings() {
+        const content = document.getElementById('admin-content');
+        content.innerHTML = `
+            <div class="admin-section-content">
+                <div class="section-header">
+                    <h3>${this.translator.t('systemSettings')}</h3>
+                </div>
+
+                <div class="settings-grid">
+                    <div class="setting-card">
+                        <h4>${this.translator.t('applicationSettings')}</h4>
+                        <div class="setting-item">
+                            <label>${this.translator.t('defaultLanguage')}:</label>
+                            <select id="default-language">
+                                <option value="en">English</option>
+                                <option value="ta">தமிழ்</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>${this.translator.t('timezone')}:</label>
+                            <select id="timezone-setting">
+                                <option value="Asia/Kolkata" selected>IST (Asia/Kolkata)</option>
+                                <option value="UTC">UTC</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="setting-card">
+                        <h4>${this.translator.t('dataManagement')}</h4>
+                        <button class="action-btn warning" onclick="app.confirmAction('backup')">
+                            ${this.translator.t('backupData')}
+                        </button>
+                        <button class="action-btn danger" onclick="app.confirmAction('clear')">
+                            ${this.translator.t('clearTestData')}
+                        </button>
+                    </div>
+
+                    <div class="setting-card">
+                        <h4>${this.translator.t('systemInfo')}</h4>
+                        <div class="info-item">
+                            <span>${this.translator.t('version')}:</span>
+                            <span>1.0.0</span>
+                        </div>
+                        <div class="info-item">
+                            <span>${this.translator.t('database')}:</span>
+                            <span>SQLite</span>
+                        </div>
+                        <div class="info-item">
+                            <span>${this.translator.t('uptime')}:</span>
+                            <span id="uptime-display">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
 }
 
 // Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new DriverApp();
+    window.app = new DriverApp();
 });

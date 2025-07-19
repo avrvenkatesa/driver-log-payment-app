@@ -316,6 +316,141 @@ const dbHelpers = {
     });
   },
 
+  // Get all drivers for admin
+  getAllDrivers: () => {
+    return new Promise((resolve, reject) => {
+      db.all(
+        'SELECT * FROM drivers ORDER BY created_at DESC',
+        [],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+  },
+
+  // Get driver details with recent shifts
+  getDriverDetails: (driverId) => {
+    return new Promise((resolve, reject) => {
+      db.get(
+        'SELECT * FROM drivers WHERE id = ?',
+        [driverId],
+        async (err, driver) => {
+          if (err) reject(err);
+          else {
+            try {
+              // Get recent shifts for this driver
+              const shifts = await dbHelpers.getDriverShifts(driverId, new Date().toISOString().split('T')[0]);
+              resolve({ ...driver, recentShifts: shifts });
+            } catch (error) {
+              resolve(driver);
+            }
+          }
+        }
+      );
+    });
+  },
+
+  // Get shifts with analytics for admin
+  getShiftsWithAnalytics: (filter) => {
+    return new Promise((resolve, reject) => {
+      let dateCondition = '';
+      const today = new Date().toISOString().split('T')[0];
+      
+      switch (filter) {
+        case 'today':
+          dateCondition = `AND date(s.clock_in_time) = date('${today}')`;
+          break;
+        case 'week':
+          dateCondition = `AND date(s.clock_in_time) >= date('${today}', '-7 days')`;
+          break;
+        case 'month':
+          dateCondition = `AND date(s.clock_in_time) >= date('${today}', 'start of month')`;
+          break;
+        default:
+          dateCondition = '';
+      }
+
+      // First get the shifts
+      db.all(
+        `SELECT s.*, d.name as driver_name 
+         FROM shifts s 
+         JOIN drivers d ON s.driver_id = d.id 
+         WHERE 1=1 ${dateCondition}
+         ORDER BY s.clock_in_time DESC`,
+        [],
+        (err, shifts) => {
+          if (err) reject(err);
+          else {
+            // Calculate summary
+            const summary = {
+              totalShifts: shifts.length,
+              totalDistance: shifts.reduce((sum, shift) => sum + (shift.total_distance || 0), 0),
+              totalMinutes: shifts.reduce((sum, shift) => sum + (shift.shift_duration_minutes || 0), 0),
+              activeDrivers: new Set(shifts.map(shift => shift.driver_id)).size
+            };
+            
+            resolve({ shifts, summary });
+          }
+        }
+      );
+    });
+  },
+
+  // Get monthly report data
+  getMonthlyReport: (year, month) => {
+    return new Promise((resolve, reject) => {
+      const startDate = `${year}-${month.padStart(2, '0')}-01`;
+      const endDate = new Date(year, month, 0).toISOString().split('T')[0]; // Last day of month
+      
+      db.all(
+        `SELECT 
+           date(clock_in_time) as shift_date,
+           COUNT(*) as shifts_count,
+           SUM(total_distance) as total_distance,
+           SUM(shift_duration_minutes) as total_minutes
+         FROM shifts 
+         WHERE date(clock_in_time) BETWEEN ? AND ?
+         AND clock_out_time IS NOT NULL
+         GROUP BY date(clock_in_time)
+         ORDER BY shift_date`,
+        [startDate, endDate],
+        (err, dailyData) => {
+          if (err) reject(err);
+          else {
+            // Calculate overall summary
+            const summary = {
+              totalShifts: dailyData.reduce((sum, day) => sum + day.shifts_count, 0),
+              totalDistance: dailyData.reduce((sum, day) => sum + (day.total_distance || 0), 0),
+              totalMinutes: dailyData.reduce((sum, day) => sum + (day.total_minutes || 0), 0),
+              avgShiftMinutes: 0
+            };
+            
+            if (summary.totalShifts > 0) {
+              summary.avgShiftMinutes = summary.totalMinutes / summary.totalShifts;
+            }
+            
+            // Format daily breakdown
+            const dailyBreakdown = dailyData.map(day => ({
+              date: day.shift_date,
+              shifts: day.shifts_count,
+              distance: day.total_distance || 0,
+              minutes: day.total_minutes || 0
+            }));
+            
+            resolve({
+              month,
+              year,
+              summary,
+              dailyBreakdown
+            });
+          }
+        }
+      );
+    });
+  },
+
   // Create test data for July 2025
   createTestData: async (driverId) => {
     return new Promise((resolve, reject) => {

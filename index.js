@@ -175,9 +175,44 @@ app.get('/api/driver/shifts-monthly/:year/:month', authenticateToken, async (req
   }
 });
 
-// API route for future admin operations  
-app.get('/api/admin', (req, res) => {
-  res.json({ message: 'Admin endpoints coming soon!' });
+// Admin API routes (protected)
+app.get('/api/admin/drivers', authenticateToken, async (req, res) => {
+  try {
+    const drivers = await dbHelpers.getAllDrivers();
+    res.json({ drivers });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get drivers' });
+  }
+});
+
+app.get('/api/admin/shifts', authenticateToken, async (req, res) => {
+  try {
+    const { filter = 'today' } = req.query;
+    const result = await dbHelpers.getShiftsWithAnalytics(filter);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get shifts analytics' });
+  }
+});
+
+app.get('/api/admin/reports/monthly', authenticateToken, async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    const report = await dbHelpers.getMonthlyReport(year, month);
+    res.json(report);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to generate monthly report' });
+  }
+});
+
+app.get('/api/admin/driver/:driverId', authenticateToken, async (req, res) => {
+  try {
+    const { driverId } = req.params;
+    const driver = await dbHelpers.getDriverDetails(driverId);
+    res.json({ driver });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get driver details' });
+  }
 });
 
 // Create test data for July 2025 (protected route)
