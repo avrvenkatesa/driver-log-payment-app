@@ -14,15 +14,14 @@ function initializeDatabase() {
       db.run(`CREATE TABLE IF NOT EXISTS drivers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
-        email TEXT,
+        email TEXT UNIQUE,
         phone TEXT UNIQUE NOT NULL,
         password_hash TEXT,
         verification_code TEXT,
         verification_expires_at DATETIME,
         is_phone_verified BOOLEAN DEFAULT 0,
         is_active BOOLEAN DEFAULT 1,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(email) WHERE email IS NOT NULL
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`);
 
       // Shifts table
