@@ -646,6 +646,126 @@ const dbHelpers = {
         );
       });
     });
+  },
+
+  // Generate configurable test data for multiple months
+  generateConfigurableTestData: async (config) => {
+    return new Promise(async (resolve, reject) => {
+      const { driverId, startMonth, endMonth, monthlySalary, overtimeRate, fuelAllowance } = config;
+      
+      try {
+        // Get driver's last shift to continue odometer readings
+        const lastShift = await dbHelpers.getLastCompletedShift(driverId);
+        let currentOdometer = lastShift ? lastShift.end_odometer : 50000;
+
+        const startDate = new Date(startMonth + '-01');
+        const endDate = new Date(endMonth + '-01');
+        endDate.setMonth(endDate.getMonth() + 1);
+        endDate.setDate(0); // Last day of end month
+
+        const testShifts = [];
+        const currentDate = new Date(startDate);
+
+        // Generate shifts for each weekday in the date range
+        while (currentDate <= endDate) {
+          const dayOfWeek = currentDate.getDay();
+          
+          // Skip weekends (Saturday = 6, Sunday = 0)
+          if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+            const dateStr = currentDate.toISOString().split('T')[0];
+            
+            // Randomize shift times
+            const startHours = Math.floor(Math.random() * 3) + 6; // 6-8 AM
+            const startMinutes = Math.floor(Math.random() * 60);
+            const shiftDuration = 8 + Math.floor(Math.random() * 2); // 8-9 hours
+            
+            const startTime = `${startHours.toString().padStart(2, '0')}:${startMinutes.toString().padStart(2, '0')}:00`;
+            
+            const endDateTime = new Date(currentDate);
+            endDateTime.setHours(startHours, startMinutes, 0, 0);
+            endDateTime.setHours(endDateTime.getHours() + shiftDuration);
+            
+            const endTime = `${endDateTime.getHours().toString().padStart(2, '0')}:${endDateTime.getMinutes().toString().padStart(2, '0')}:00`;
+            
+            // Random distance between 120-200 km
+            const distance = Math.floor(Math.random() * 80) + 120;
+            const endOdometer = currentOdometer + distance;
+            
+            testShifts.push({
+              date: dateStr,
+              startTime,
+              endTime,
+              startOdo: currentOdometer,
+              endOdo: endOdometer
+            });
+            
+            currentOdometer = endOdometer;
+          }
+          
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        let completed = 0;
+        const total = testShifts.length;
+
+        if (total === 0) {
+          resolve(0);
+          return;
+        }
+
+        testShifts.forEach(shift => {
+          const clockInTime = `${shift.date} ${shift.startTime}`;
+          const clockOutTime = `${shift.date} ${shift.endTime}`;
+          
+          // Calculate duration
+          const startTime = new Date(`${shift.date}T${shift.startTime}`);
+          const endTime = new Date(`${shift.date}T${shift.endTime}`);
+          const durationMinutes = Math.round((endTime - startTime) / (1000 * 60));
+          const totalDistance = shift.endOdo - shift.startOdo;
+
+          db.run(
+            `INSERT INTO shifts (driver_id, clock_in_time, clock_out_time, start_odometer, end_odometer, total_distance, shift_duration_minutes, status) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'completed')`,
+            [driverId, clockInTime, clockOutTime, shift.startOdo, shift.endOdo, totalDistance, durationMinutes],
+            function(err) {
+              if (err) {
+                console.error('Error creating test shift:', err);
+              }
+              completed++;
+              if (completed === total) {
+                resolve(completed);
+              }
+            }
+          );
+        });
+      } catch (error) {
+        reject(error);
+      }
+    });
+  },
+
+  // Clear test data
+  clearTestData: async () => {
+    return new Promise((resolve, reject) => {
+      // First count how many shifts will be deleted
+      db.get('SELECT COUNT(*) as count FROM shifts WHERE status = "completed"', [], (err, result) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        const shiftsCount = result.count;
+
+        // Delete all completed shifts (test data)
+        db.run('DELETE FROM shifts WHERE status = "completed"', [], function(err) {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(shiftsCount);
+          }
+        });
+      });
+    });
   }
 };
 

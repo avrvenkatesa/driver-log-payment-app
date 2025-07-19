@@ -262,6 +262,48 @@ app.post('/api/driver/create-test-data', authenticateToken, async (req, res) => 
   }
 });
 
+// Admin: Generate configurable test data
+app.post('/api/admin/generate-test-data', authenticateToken, async (req, res) => {
+  try {
+    const { driverId, startMonth, endMonth, monthlySalary, overtimeRate, fuelAllowance } = req.body;
+    
+    if (!driverId || !startMonth || !endMonth) {
+      return res.status(400).json({ error: 'Driver ID, start month, and end month are required' });
+    }
+
+    const shiftsCreated = await dbHelpers.generateConfigurableTestData({
+      driverId,
+      startMonth,
+      endMonth,
+      monthlySalary: monthlySalary || 27000,
+      overtimeRate: overtimeRate || 100,
+      fuelAllowance: fuelAllowance || 33.30
+    });
+
+    res.json({ 
+      success: true, 
+      message: `Created ${shiftsCreated} test shifts`,
+      shiftsCreated 
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to generate test data' });
+  }
+});
+
+// Admin: Clear test data
+app.post('/api/admin/clear-test-data', authenticateToken, async (req, res) => {
+  try {
+    const shiftsDeleted = await dbHelpers.clearTestData();
+    res.json({ 
+      success: true, 
+      message: `Cleared ${shiftsDeleted} test shifts`,
+      shiftsDeleted 
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to clear test data' });
+  }
+});
+
 // Serve the main frontend
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

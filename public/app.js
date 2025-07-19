@@ -592,11 +592,11 @@ class DriverApp {
 
             if (data.payroll) {
                 const payroll = data.payroll;
-                
+
                 shiftsDiv.innerHTML = `
                     <div class="shifts-card">
                         <h3>${this.translator.t('payrollSummary')} - ${this.getMonthName(month)} ${year}</h3>
-                        
+
                         <div class="payroll-summary">
                             <div class="payroll-section">
                                 <h4>${this.translator.t('workSummary')}:</h4>
@@ -606,7 +606,7 @@ class DriverApp {
                                 <p>${this.translator.t('regularHours')}: ${payroll.regularHours}h</p>
                                 <p>${this.translator.t('overtimeHours')}: ${payroll.overtimeHours}h</p>
                             </div>
-                            
+
                             <div class="payroll-section">
                                 <h4>${this.translator.t('paymentBreakdown')}:</h4>
                                 <p>${this.translator.t('baseSalary')}: ₹${payroll.baseSalary.toLocaleString()}</p>
@@ -616,7 +616,7 @@ class DriverApp {
                                 <p><strong>${this.translator.t('grossPay')}: ₹${payroll.grossPay.toLocaleString()}</strong></p>
                             </div>
                         </div>
-                        
+
                         <div class="payroll-notes">
                             <small>
                                 <p>• ${this.translator.t('overtimeNote')}</p>
@@ -1388,52 +1388,155 @@ class DriverApp {
         document.body.insertAdjacentHTML('beforeend', modalHtml);
     }
 
-    confirmAction(action) {
-        const actionText = action === 'backup' ? 'backup all data' : 'clear all test data';
-        if (confirm(`Are you sure you want to ${actionText}? This action cannot be undone.`)) {
-            if (action === 'backup') {
-                this.showMessage('Backup functionality will be available in a future update', 'info');
+    async handleGenerateTestData(e) {
+        e.preventDefault();
+
+        const formData = {
+            driverId: document.getElementById('test-driver-select').value,
+            startMonth: document.getElementById('test-start-month').value,
+            endMonth: document.getElementById('test-end-month').value,
+            monthlySalary: parseFloat(document.getElementById('test-monthly-salary').value),
+            overtimeRate: parseFloat(document.getElementById('test-overtime-rate').value),
+            fuelAllowance: parseFloat(document.getElementById('test-fuel-allowance').value)
+        };
+
+        if (!formData.driverId) {
+            this.showMessage('Please select a driver', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/admin/generate-test-data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.token}`
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                this.showMessage(`Successfully generated ${data.shiftsCreated} test shifts`, 'success');
+                // Reset form
+                document.getElementById('generate-test-data-form').reset();
+                const currentMonth = new Date().toISOString().slice(0, 7);
+                document.getElementById('test-start-month').value = currentMonth;
+                document.getElementById('test-end-month').value = currentMonth;
             } else {
-                this.showMessage('Clear test data functionality will be available in a future update', 'info');
+                this.showMessage(data.error || 'Failed to generate test data', 'error');
+            }
+        } catch (error) {
+            this.showMessage('Error generating test data', 'error');
+        }
+    }
+
+    async confirmAction(action) {
+        if (action === 'backup') {
+            this.showMessage('Backup functionality will be available in a future update', 'info');
+        } else if (action === 'clear') {
+            if (confirm('Are you sure you want to clear all test data? This action cannot be undone.')) {
+                try {
+                    const response = await fetch('/api/admin/clear-test-data', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${this.token}`
+                        }
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        this.showMessage(`Successfully cleared ${data.shiftsDeleted} test shifts`, 'success');
+                    } else {
+                        this.showMessage(data.error || 'Failed to clear test data', 'error');
+                    }
+                } catch (error) {
+                    this.showMessage('Error clearing test data', 'error');
+                }
             }
         }
     }
 
-    loadSettings() {
+    async loadSettings() {
         const content = document.getElementById('admin-content');
+
+        // Load drivers for dropdown
+        let driversOptions = '<option value="">Select Driver</option>';
+        try {
+            const response = await fetch('/api/admin/drivers', {
+                headers: { 'Authorization': `Bearer ${this.token}` }
+            });
+            const data = await response.json();
+            if (data.drivers) {
+                driversOptions = '<option value="">Select Driver</option>' + 
+                    data.drivers.map(driver => 
+                        `<option value="${driver.id}">${driver.name} (${driver.phone})</option>`
+                    ).join('');
+            }
+        } catch (error) {
+            console.error('Failed to load drivers:', error);
+        }
+
         content.innerHTML = `
             <div class="admin-section-content">
                 <div class="section-header">
-                    <h3>${this.translator.t('systemSettings')}</h3>
+                    <h3>${this.translator.t('settings')}</h3>
                 </div>
 
                 <div class="settings-grid">
                     <div class="setting-card">
-                        <h4>${this.translator.t('applicationSettings')}</h4>
-                        <div class="setting-item">
-                            <label>${this.translator.t('defaultLanguage')}:</label>
-                            <select id="default-language">
-                                <option value="en">English</option>
-                                <option value="ta">தமிழ்</option>
-                            </select>
-                        </div>
-                        <div class="setting-item">
-                            <label>${this.translator.t('timezone')}:</label>
-                            <select id="timezone-setting">
-                                <option value="Asia/Kolkata" selected>IST (Asia/Kolkata)</option>
-                                <option value="UTC">UTC</option>
-                            </select>
-                        </div>
+                        <h4>Generate Test Data</h4>
+                        <p>Generate configurable test shift data for selected driver and time period.</p>
+                        <form id="generate-test-data-form" class="test-data-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="test-driver-select">Driver:</label>
+                                    <select id="test-driver-select" required>
+                                        ${driversOptions}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="test-start-month">Start Month:</label>
+                                    <input type="month" id="test-start-month" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="test-end-month">End Month:</label>
+                                    <input type="month" id="test-end-month" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="test-monthly-salary">Monthly Salary (₹):</label>
+                                    <input type="number" id="test-monthly-salary" value="27000" min="0" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="test-overtime-rate">Overtime Rate (₹/hour):</label>
+                                    <input type="number" id="test-overtime-rate" value="100" min="0" step="0.01" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="test-fuel-allowance">Daily Fuel Allowance (₹):</label>
+                                    <input type="number" id="test-fuel-allowance" value="33.30" min="0" step="0.01" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="action-btn">Generate Test Data</button>
+                        </form>
                     </div>
 
                     <div class="setting-card">
                         <h4>${this.translator.t('dataManagement')}</h4>
-                        <button id="backup-data-btn" class="action-btn warning">
-                            ${this.translator.t('backupData')}
-                        </button>
-                        <button id="clear-data-btn" class="action-btn danger">
-                            ${this.translator.t('clearTestData')}
-                        </button>
+                        <p>${this.translator.t('dataManagementDesc')}</p>
+                        <div class="setting-actions">
+                            <button id="backup-data-btn" class="action-btn">
+                                ${this.translator.t('backupData')}
+                            </button>
+                            <button id="clear-data-btn" class="action-btn danger">
+                                ${this.translator.t('clearTestData')}
+                            </button>
+                        </div>
                     </div>
 
                     <div class="setting-card">
@@ -1456,8 +1559,14 @@ class DriverApp {
         `;
 
         // Set up event listeners
+        document.getElementById('generate-test-data-form')?.addEventListener('submit', (e) => this.handleGenerateTestData(e));
         document.getElementById('backup-data-btn')?.addEventListener('click', () => this.confirmAction('backup'));
         document.getElementById('clear-data-btn')?.addEventListener('click', () => this.confirmAction('clear'));
+
+        // Set default months
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        document.getElementById('test-start-month').value = currentMonth;
+        document.getElementById('test-end-month').value = currentMonth;
     }
 }
 
