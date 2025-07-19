@@ -377,3 +377,289 @@ class TranslationManager {
         return translation && translation[key] ? translation[key] : key;
     }
 }
+// Translation Manager for multi-language support
+class TranslationManager {
+    constructor() {
+        this.currentLanguage = localStorage.getItem('selectedLanguage') || 'en';
+        this.translations = {
+            en: {
+                // App basics
+                appTitle: 'Driver Log & Payment App',
+                driverDashboard: 'Driver Dashboard',
+                adminPanel: 'Admin Panel',
+                
+                // Authentication
+                driverLogin: 'Driver Login',
+                driverRegistration: 'Driver Registration',
+                userId: 'User ID / Phone',
+                password: 'Password',
+                fullName: 'Full Name',
+                email: 'Email',
+                login: 'Login',
+                register: 'Register',
+                logout: 'Logout',
+                optional: 'optional',
+                dontHaveAccount: "Don't have an account?",
+                registerHere: 'Register here',
+                alreadyHaveAccount: 'Already have an account?',
+                loginHere: 'Login here',
+                fieldsMarkedRequired: 'Fields marked with * are required',
+                
+                // Dashboard
+                welcome: 'Welcome',
+                shiftStatus: 'Shift Status',
+                quickActions: 'Quick Actions',
+                currentlyOnShift: 'Currently on shift',
+                notOnShift: 'Not on shift',
+                readyForNewShift: 'Ready for a new shift',
+                checking: 'Checking...',
+                
+                // Shift actions
+                startShift: 'Start Shift',
+                endShift: 'End Shift',
+                viewTodaysShifts: "View Today's Shifts",
+                viewMonthlyShifts: 'View Monthly Shifts',
+                viewPayroll: 'View Payroll',
+                startNewShift: 'Start New Shift',
+                endCurrentShift: 'End Current Shift',
+                clockIn: 'Clock In',
+                clockOut: 'Clock Out',
+                cancel: 'Cancel',
+                
+                // Shift details
+                shift: 'Shift',
+                start: 'Start',
+                end: 'End',
+                started: 'Started',
+                startOdometer: 'Start Odometer',
+                endOdometer: 'End Odometer',
+                startingOdometerReading: 'Starting Odometer Reading',
+                endingOdometerReading: 'Ending Odometer Reading',
+                distance: 'Distance',
+                duration: 'Duration',
+                km: 'km',
+                currentlyActive: 'Currently Active',
+                
+                // Time periods
+                todaysShifts: "Today's Shifts",
+                monthlyShifts: 'Monthly Shifts',
+                noShiftsToday: 'No shifts recorded today',
+                noShiftsThisMonth: 'No shifts recorded this month',
+                
+                // Payroll
+                payrollSummary: 'Payroll Summary',
+                workSummary: 'Work Summary',
+                paymentBreakdown: 'Payment Breakdown',
+                totalShifts: 'Total Shifts',
+                daysWorked: 'Days Worked',
+                totalDistance: 'Total Distance',
+                regularHours: 'Regular Hours',
+                overtimeHours: 'Overtime Hours',
+                baseSalary: 'Base Salary',
+                overtimePay: 'Overtime Pay',
+                fuelAllowance: 'Fuel Allowance',
+                grossPay: 'Gross Pay',
+                noPayrollData: 'No payroll data available for this period',
+                overtimeNote: 'Overtime calculated for hours beyond 8 per day',
+                fuelAllowanceNote: 'Fuel allowance calculated per working day',
+                
+                // Admin
+                drivers: 'Drivers',
+                shifts: 'Shifts',
+                reports: 'Reports',
+                settings: 'Settings',
+                driversManagement: 'Drivers Management',
+                shiftsAnalytics: 'Shifts Analytics',
+                
+                // Data table headers
+                id: 'ID',
+                name: 'Name',
+                phone: 'Phone',
+                verified: 'Verified',
+                status: 'Status',
+                joinDate: 'Join Date',
+                actions: 'Actions',
+                view: 'View',
+                shiftId: 'Shift ID',
+                driver: 'Driver',
+                
+                // Status labels
+                active: 'Active',
+                inactive: 'Inactive',
+                completed: 'Completed',
+                unverified: 'Unverified',
+                
+                // Time filters
+                today: 'Today',
+                thisWeek: 'This Week',
+                thisMonth: 'This Month',
+                allTime: 'All Time',
+                
+                // Analytics
+                totalHours: 'Total Hours',
+                activeDrivers: 'Active Drivers',
+                avgShiftLength: 'Avg Shift Length',
+                
+                // Reports
+                monthlyReport: 'Monthly Report',
+                driverReport: 'Driver Report',
+                monthlyReportDesc: 'Generate comprehensive monthly statistics',
+                driverReportDesc: 'Generate individual driver performance reports',
+                generate: 'Generate',
+                date: 'Date',
+                hours: 'Hours',
+                
+                // Settings
+                dataManagement: 'Data Management',
+                dataManagementDesc: 'Manage application data and settings',
+                backupData: 'Backup Data',
+                clearTestData: 'Clear Test Data',
+                systemInfo: 'System Information',
+                version: 'Version',
+                database: 'Database',
+                uptime: 'Uptime',
+                
+                // Actions and buttons
+                refresh: 'Refresh',
+                loading: 'Loading',
+                loadPayroll: 'Load Payroll',
+                
+                // Messages
+                loginSuccessful: 'Login successful',
+                registrationSuccessful: 'Registration successful',
+                clockedInSuccessfully: 'Clocked in successfully',
+                clockedOutSuccessfully: 'Clocked out successfully',
+                
+                // Errors
+                loginFailed: 'Login failed',
+                registrationFailed: 'Registration failed',
+                failedToLoadShiftStatus: 'Failed to load shift status',
+                failedToClockIn: 'Failed to clock in',
+                failedToClockOut: 'Failed to clock out',
+                failedToLoadShifts: 'Failed to load shifts',
+                failedToLoadMonthlyShifts: 'Failed to load monthly shifts',
+                failedToLoadPayroll: 'Failed to load payroll',
+                failedToLoadDrivers: 'Failed to load drivers',
+                connectionError: 'Connection error',
+                selectMonthToLoadPayroll: 'Select a month to load payroll data',
+                noPayrollDataForPeriod: 'No payroll data found for this period',
+                failedToGenerateReport: 'Failed to generate report',
+                
+                // Month summary
+                monthSummary: 'Month Summary',
+                
+                // Days/weeks
+                days: 'Days'
+            },
+            ta: {
+                // App basics
+                appTitle: 'ஓட்டுநர் பதிவு & சம்பள செயலி',
+                driverDashboard: 'ஓட்டுநர் டாஷ்போர்டு',
+                adminPanel: 'நிர்வாக பேனல்',
+                
+                // Authentication
+                driverLogin: 'ஓட்டுநர் உள்நுழைவு',
+                driverRegistration: 'ஓட்டுநர் பதிவு',
+                userId: 'பயனர் அடையாளம் / தொலைபேசி',
+                password: 'கடவுச்சொல்',
+                fullName: 'முழு பெயர்',
+                email: 'மின்னஞ்சல்',
+                login: 'உள்நுழை',
+                register: 'பதிவு செய்',
+                logout: 'வெளியேறு',
+                optional: 'விருப்பமானது',
+                dontHaveAccount: 'கணக்கு இல்லையா?',
+                registerHere: 'இங்கே பதிவு செய்யுங்கள்',
+                alreadyHaveAccount: 'ஏற்கனவே கணக்கு உள்ளதா?',
+                loginHere: 'இங்கே உள்நுழையுங்கள்',
+                fieldsMarkedRequired: '* குறிக்கப்பட்ட புலங்கள் அவசியம்',
+                
+                // Dashboard
+                welcome: 'வரவேற்கிறோம்',
+                shiftStatus: 'ஷிப்ட் நிலை',
+                quickActions: 'விரைவு செயல்கள்',
+                currentlyOnShift: 'தற்போது ஷிப்ட்டில்',
+                notOnShift: 'ஷிப்ட்டில் இல்லை',
+                readyForNewShift: 'புதிய ஷிப்ட்டுக்கு தயார்',
+                checking: 'சரிபார்க்கிறது...',
+                
+                // Shift actions
+                startShift: 'ஷிப்ட் தொடங்கு',
+                endShift: 'ஷிப்ட் முடி',
+                viewTodaysShifts: 'இன்றைய ஷிப்ட்களை பார்',
+                viewMonthlyShifts: 'மாதாந்திர ஷிப்ட்களை பார்',
+                viewPayroll: 'சம்பளம் பார்',
+                startNewShift: 'புதிய ஷிப்ட் தொடங்கு',
+                endCurrentShift: 'தற்போதைய ஷிப்ட் முடி',
+                clockIn: 'உள்வா',
+                clockOut: 'வெளியேறு',
+                cancel: 'ரத்து செய்',
+                
+                // Shift details
+                shift: 'ஷிப்ட்',
+                start: 'தொடக்கம்',
+                end: 'முடிவு',
+                started: 'தொடங்கியது',
+                startOdometer: 'தொடக்க ஓடோமீட்டர்',
+                endOdometer: 'இறுதி ஓடோமீட்டர்',
+                startingOdometerReading: 'தொடக்க ஓடோமீட்டர் அளவீடு',
+                endingOdometerReading: 'இறுதி ஓடோமீட்டர் அளவீடு',
+                distance: 'தூரம்',
+                duration: 'கால அளவு',
+                km: 'கி.மீ',
+                currentlyActive: 'தற்போது செயல்பாட்டில்',
+                
+                // Time periods
+                todaysShifts: 'இன்றைய ஷிப்ட்கள்',
+                monthlyShifts: 'மாதாந்திர ஷிப்ட்கள்',
+                noShiftsToday: 'இன்று எந்த ஷிப்ட் பதிவும் இல்லை',
+                noShiftsThisMonth: 'இந்த மாதத்தில் எந்த ஷிப்ட் பதிவும் இல்லை',
+                
+                // Payroll
+                payrollSummary: 'சம்பள சுருக்கம்',
+                workSummary: 'வேலை சுருக்கம்',
+                paymentBreakdown: 'சம்பள விவரக்குறிப்பு',
+                totalShifts: 'மொத்த ஷிப்ட்கள்',
+                daysWorked: 'வேலை செய்த நாட்கள்',
+                totalDistance: 'மொத்த தூரம்',
+                regularHours: 'வழக்கமான மணிநேரங்கள்',
+                overtimeHours: 'கூடுதல் நேர மணிகள்',
+                baseSalary: 'அடிப்படை சம்பளம்',
+                overtimePay: 'கூடுதல் நேர சம்பளம்',
+                fuelAllowance: 'எரிபொருள் அலவன்ஸ்',
+                grossPay: 'மொத்த சம்பளம்',
+                noPayrollData: 'இந்த காலகட்டத்திற்கு சம்பள தரவு இல்லை',
+                overtimeNote: 'நாளொன்றுக்கு 8 மணி நேரத்துக்கு மேல் கூடுதல் நேர கணக்கீடு',
+                fuelAllowanceNote: 'வேலை செய்த நாட்களுக்கு எரிபொருள் அலவன்ஸ் கணக்கீடு',
+                
+                // Common terms
+                totalHours: 'மொத்த மணிநேரங்கள்',
+                loading: 'ஏற்றுகிறது',
+                refresh: 'புதுப்பி',
+                
+                // Messages
+                loginSuccessful: 'உள்நுழைவு வெற்றிகரமானது',
+                registrationSuccessful: 'பதிவு வெற்றிகரமானது',
+                clockedInSuccessfully: 'வெற்றிகரமாக உள்வந்தீர்கள்',
+                clockedOutSuccessfully: 'வெற்றிகரமாக வெளியேறினீர்கள்',
+                
+                // Month summary
+                monthSummary: 'மாத சுருக்கம்'
+            }
+        };
+    }
+
+    getCurrentLanguage() {
+        return this.currentLanguage;
+    }
+
+    setLanguage(language) {
+        this.currentLanguage = language;
+        localStorage.setItem('selectedLanguage', language);
+    }
+
+    t(key) {
+        const translation = this.translations[this.currentLanguage]?.[key];
+        return translation || this.translations['en'][key] || key;
+    }
+}
