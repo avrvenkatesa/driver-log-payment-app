@@ -194,9 +194,21 @@ const dbHelpers = {
   // Clock in
   clockIn: (driverId, startOdometer) => {
     return new Promise((resolve, reject) => {
+      // Generate IST timestamp
+      const istTime = new Date().toLocaleString('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).replace(',', '');
+      
       db.run(
-        'INSERT INTO shifts (driver_id, clock_in_time, start_odometer) VALUES (?, CURRENT_TIMESTAMP, ?)',
-        [driverId, startOdometer],
+        'INSERT INTO shifts (driver_id, clock_in_time, start_odometer) VALUES (?, ?, ?)',
+        [driverId, istTime, startOdometer],
         function(err) {
           if (err) reject(err);
           else resolve(this.lastID);
@@ -208,20 +220,45 @@ const dbHelpers = {
   // Clock out
   clockOut: (shiftId, endOdometer) => {
     return new Promise((resolve, reject) => {
-      db.run(
-        `UPDATE shifts 
-         SET clock_out_time = CURRENT_TIMESTAMP, 
-             end_odometer = ?,
-             total_distance = ? - start_odometer,
-             shift_duration_minutes = (strftime('%s', CURRENT_TIMESTAMP) - strftime('%s', clock_in_time)) / 60,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE id = ?`,
-        [endOdometer, endOdometer, shiftId],
-        function(err) {
-          if (err) reject(err);
-          else resolve(this.changes);
+      // Generate IST timestamp
+      const istTime = new Date().toLocaleString('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).replace(',', '');
+      
+      // First get the clock_in_time to calculate duration
+      db.get('SELECT clock_in_time FROM shifts WHERE id = ?', [shiftId], (err, shift) => {
+        if (err) {
+          reject(err);
+          return;
         }
-      );
+        
+        // Calculate duration between IST times
+        const clockInTime = new Date(shift.clock_in_time);
+        const clockOutTime = new Date(istTime);
+        const durationMinutes = Math.round((clockOutTime - clockInTime) / (1000 * 60));
+        
+        db.run(
+          `UPDATE shifts 
+           SET clock_out_time = ?, 
+               end_odometer = ?,
+               total_distance = ? - start_odometer,
+               shift_duration_minutes = ?,
+               updated_at = ?
+           WHERE id = ?`,
+          [istTime, endOdometer, endOdometer, durationMinutes, istTime, shiftId],
+          function(err) {
+            if (err) reject(err);
+            else resolve(this.changes);
+          }
+        );
+      });
     });
   },
 
