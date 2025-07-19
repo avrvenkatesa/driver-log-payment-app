@@ -157,6 +157,19 @@ main {
     transform: translateY(-2px);
 }
 
+.action-btn:disabled {
+    background: #bdc3c7;
+    color: #7f8c8d;
+    cursor: not-allowed;
+    transform: none;
+    opacity: 0.6;
+}
+
+.action-btn:disabled:hover {
+    background: #bdc3c7;
+    transform: none;
+}
+
 @media (max-width: 600px) {
     body {
         font-size: 16px; /* Prevent zoom on iOS */
