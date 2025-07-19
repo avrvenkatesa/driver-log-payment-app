@@ -456,6 +456,26 @@ class DriverApp {
         }, 3000);
     }
 
+    translateError(errorResponse) {
+        if (typeof errorResponse === 'string') {
+            return this.translator.t(errorResponse);
+        }
+        
+        if (errorResponse.error) {
+            let errorMsg = this.translator.t(errorResponse.error);
+            
+            // Handle errors that need data interpolation
+            if (errorResponse.data && errorResponse.error === 'startOdometerMustBeGreater') {
+                errorMsg = errorMsg.replace('{startOdometer}', errorResponse.data.startOdometer)
+                              .replace('{endOdometer}', errorResponse.data.endOdometer);
+            }
+            
+            return errorMsg;
+        }
+        
+        return errorResponse;
+    }
+
     logout() {
         localStorage.removeItem('authToken');
         this.token = null;
