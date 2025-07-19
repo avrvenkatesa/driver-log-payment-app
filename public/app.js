@@ -132,7 +132,7 @@ class DriverApp {
                     <h2 id="auth-title">${this.translator.t('driverLogin')}</h2>
 
                     <form id="login-form" class="auth-form">
-                        <input type="text" id="login-identifier" placeholder="${this.translator.t('phoneOrEmail')}" required>
+                        <input type="text" id="login-identifier" placeholder="${this.translator.t('userId')}" required>
                         <input type="password" id="login-password" placeholder="${this.translator.t('password')}" required>
                         <button type="submit" class="auth-btn">${this.translator.t('login')}</button>
                         <p class="auth-toggle">
