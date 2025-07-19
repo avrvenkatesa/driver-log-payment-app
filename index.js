@@ -88,11 +88,11 @@ app.post('/api/driver/clock-in', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'alreadyActiveShift' });
     }
 
-    // Check if start odometer is greater than previous end odometer
+    // Check if start odometer is greater than or equal to previous end odometer
     const lastShift = await dbHelpers.getLastCompletedShift(driverId);
-    if (lastShift && lastShift.end_odometer && startOdometer <= lastShift.end_odometer) {
+    if (lastShift && lastShift.end_odometer && startOdometer < lastShift.end_odometer) {
       return res.status(400).json({ 
-        error: 'startOdometerMustBeGreater',
+        error: 'startOdometerMustBeGreaterOrEqual',
         data: { startOdometer, endOdometer: lastShift.end_odometer }
       });
     }
