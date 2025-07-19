@@ -13,6 +13,11 @@ class DriverApp {
         this.setupEventListeners();
 
         if (this.token) {
+            // Load currentUser from localStorage if available
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                this.currentUser = JSON.parse(savedUser);
+            }
             await this.loadUserData();
             this.showDriverDashboard();
         } else {
@@ -176,7 +181,7 @@ class DriverApp {
     showDriverDashboard() {
         document.getElementById('driver-section').innerHTML = `
             <div class="dashboard-header">
-                <h2>${this.translator.t('welcome')}, ${this.currentUser?.name || this.translator.t('driverDashboard')}!</h2>
+                <h2>${this.translator.t('welcome')}, ${this.currentUser?.name || 'Driver'}!</h2>
                 <button id="logout-btn" class="logout-btn">${this.translator.t('logout')}</button>
             </div>
 
@@ -236,6 +241,7 @@ class DriverApp {
                 this.token = data.token;
                 localStorage.setItem('authToken', this.token);
                 this.currentUser = data.driver;
+                localStorage.setItem('currentUser', JSON.stringify(data.driver));
                 this.showDriverDashboard();
                 this.showMessage(this.translator.t('loginSuccessful'), 'success');
             } else {
@@ -726,6 +732,7 @@ class DriverApp {
 
     logout() {
         localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
         this.token = null;
         this.currentUser = null;
         this.showAuthScreen();
