@@ -48,11 +48,30 @@ function initializeDatabase() {
         new_values TEXT,
         changed_by TEXT,
         changed_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )`, (err) => {
+      )`, async (err) => {
         if (err) {
           reject(err);
         } else {
           console.log('✅ Database tables initialized successfully');
+          
+          // Create test user if it doesn't exist
+          try {
+            const testUser = await dbHelpers.getDriverByEmail('test@driver.com');
+            if (!testUser) {
+              const bcrypt = require('bcryptjs');
+              const testPassword = await bcrypt.hash('password123', 10);
+              await dbHelpers.createDriver({
+                name: 'Test Driver',
+                email: 'test@driver.com',
+                password_hash: testPassword,
+                phone: '+1234567890'
+              });
+              console.log('🧪 Test driver account created: test@driver.com / password123');
+            }
+          } catch (error) {
+            console.log('Note: Could not create test user:', error.message);
+          }
+          
           resolve();
         }
       });
