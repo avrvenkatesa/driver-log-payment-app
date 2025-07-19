@@ -3,7 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const bodyParser = require('body-parser');
 const { initializeDatabase, dbHelpers } = require('./database');
-const { authenticateToken, loginDriver, registerDriver } = require('./auth');
+const { authenticateToken, loginDriver, registerDriver, sendSMSVerification, verifySMSCode } = require('./auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -38,13 +38,13 @@ app.get('/api/health', (req, res) => {
 
 // Authentication routes
 app.post('/api/auth/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { identifier, password } = req.body; // identifier can be email or phone
   
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password required' });
+  if (!identifier || !password) {
+    return res.status(400).json({ error: 'Phone/Email and password required' });
   }
 
-  const result = await loginDriver(email, password);
+  const result = await loginDriver(identifier, password);
   
   if (result.success) {
     res.json(result);
@@ -54,16 +54,49 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 app.post('/api/auth/register', async (req, res) => {
-  const { name, email, password, phone } = req.body;
+  const { name, phone, email, password } = req.body;
   
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: 'Name, email and password required' });
+  if (!name || !phone) {
+    return res.status(400).json({ error: 'Name and phone number required' });
   }
 
-  const result = await registerDriver(name, email, password, phone);
+  const result = await registerDriver(name, phone, email, password);
   
   if (result.success) {
     res.status(201).json(result);
+  } else {
+    res.status(400).json({ error: result.error });
+  }
+});
+
+// SMS verification routes
+app.post('/api/auth/send-verification', async (req, res) => {
+  const { phone } = req.body;
+  
+  if (!phone) {
+    return res.status(400).json({ error: 'Phone number required' });
+  }
+
+  const result = await sendSMSVerification(phone);
+  
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(400).json({ error: result.error });
+  }
+});
+
+app.post('/api/auth/verify-phone', async (req, res) => {
+  const { phone, code } = req.body;
+  
+  if (!phone || !code) {
+    return res.status(400).json({ error: 'Phone number and verification code required' });
+  }
+
+  const result = await verifySMSCode(phone, code);
+  
+  if (result.success) {
+    res.json(result);
   } else {
     res.status(400).json({ error: result.error });
   }

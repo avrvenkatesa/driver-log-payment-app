@@ -52,12 +52,24 @@ function authenticateToken(req, res, next) {
   next();
 }
 
-// Login function
-async function loginDriver(email, password) {
+// Login function - supports both email and phone
+async function loginDriver(identifier, password) {
   try {
-    const driver = await dbHelpers.getDriverByEmail(email);
+    let driver;
+    
+    // Check if identifier is email or phone
+    if (identifier.includes('@')) {
+      driver = await dbHelpers.getDriverByEmail(identifier);
+    } else {
+      driver = await dbHelpers.getDriverByPhone(identifier);
+    }
+    
     if (!driver) {
       throw new Error('Driver not found');
+    }
+
+    if (!driver.is_phone_verified) {
+      throw new Error('Phone number not verified. Please verify your phone first.');
     }
 
     const isValidPassword = await verifyPassword(password, driver.password_hash);
@@ -65,13 +77,14 @@ async function loginDriver(email, password) {
       throw new Error('Invalid password');
     }
 
-    const token = generateToken(driver.id, driver.email);
+    const token = generateToken(driver.id, driver.phone);
     return {
       success: true,
       token,
       driver: {
         id: driver.id,
         name: driver.name,
+        phone: driver.phone,
         email: driver.email
       }
     };
@@ -83,31 +96,98 @@ async function loginDriver(email, password) {
   }
 }
 
-// Register function
-async function registerDriver(name, email, password, phone) {
+// Send SMS verification code (mock function - replace with real SMS service)
+async function sendSMSVerification(phone) {
   try {
-    const existingDriver = await dbHelpers.getDriverByEmail(email);
-    if (existingDriver) {
-      throw new Error('Email already registered');
+    // Generate 6-digit verification code
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Update database with verification code
+    await dbHelpers.updateVerificationCode(phone, verificationCode);
+    
+    // Mock SMS sending - replace with actual SMS service like Twilio
+    console.log(`📱 SMS Verification Code for ${phone}: ${verificationCode}`);
+    
+    // In production, replace this with actual SMS service:
+    // await twilioClient.messages.create({
+    //   body: `Your verification code is: ${verificationCode}`,
+    //   from: '+1234567890', // Your Twilio number
+    //   to: phone
+    // });
+    
+    return {
+      success: true,
+      message: 'Verification code sent successfully'
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: 'Failed to send verification code'
+    };
+  }
+}
+
+// Verify SMS code
+async function verifySMSCode(phone, code) {
+  try {
+    const driver = await dbHelpers.verifyPhoneNumber(phone, code);
+    if (!driver) {
+      throw new Error('Invalid or expired verification code');
     }
 
-    const password_hash = await hashPassword(password);
+    return {
+      success: true,
+      message: 'Phone number verified successfully',
+      driver: {
+        id: driver.id,
+        name: driver.name,
+        phone: driver.phone
+      }
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+// Register function - phone-based registration
+async function registerDriver(name, phone, email, password) {
+  try {
+    // Check if phone already exists
+    const existingDriverByPhone = await dbHelpers.getDriverByPhone(phone);
+    if (existingDriverByPhone) {
+      throw new Error('Phone number already registered');
+    }
+
+    // Check email if provided
+    if (email) {
+      const existingDriverByEmail = await dbHelpers.getDriverByEmail(email);
+      if (existingDriverByEmail) {
+        throw new Error('Email already registered');
+      }
+    }
+
+    const password_hash = password ? await hashPassword(password) : null;
     const driverId = await dbHelpers.createDriver({
       name,
-      email,
+      email: email || null,
       password_hash,
       phone
     });
 
-    const token = generateToken(driverId, email);
+    // Send SMS verification
+    const smsResult = await sendSMSVerification(phone);
+    if (!smsResult.success) {
+      throw new Error('Failed to send verification SMS');
+    }
+
     return {
       success: true,
-      token,
-      driver: {
-        id: driverId,
-        name,
-        email
-      }
+      message: 'Registration successful. Please verify your phone number.',
+      driverId,
+      requiresVerification: true
     };
   } catch (error) {
     return {
@@ -124,5 +204,7 @@ module.exports = {
   verifyToken,
   authenticateToken,
   loginDriver,
-  registerDriver
+  registerDriver,
+  sendSMSVerification,
+  verifySMSCode
 };

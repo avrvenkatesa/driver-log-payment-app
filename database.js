@@ -14,9 +14,12 @@ function initializeDatabase() {
       db.run(`CREATE TABLE IF NOT EXISTS drivers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        phone TEXT,
+        email TEXT UNIQUE,
+        phone TEXT UNIQUE NOT NULL,
+        password_hash TEXT,
+        verification_code TEXT,
+        verification_expires_at DATETIME,
+        is_phone_verified BOOLEAN DEFAULT 0,
         is_active BOOLEAN DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`);
@@ -56,7 +59,7 @@ function initializeDatabase() {
           
           // Create test user if it doesn't exist
           try {
-            const testUser = await dbHelpers.getDriverByEmail('test@driver.com');
+            const testUser = await dbHelpers.getDriverByPhone('+1234567890');
             if (!testUser) {
               const bcrypt = require('bcryptjs');
               const testPassword = await bcrypt.hash('password123', 10);
@@ -66,7 +69,14 @@ function initializeDatabase() {
                 password_hash: testPassword,
                 phone: '+1234567890'
               });
-              console.log('🧪 Test driver account created: test@driver.com / password123');
+              // Mark test user as verified
+              await new Promise((resolve, reject) => {
+                db.run('UPDATE drivers SET is_phone_verified = 1 WHERE phone = ?', ['+1234567890'], (err) => {
+                  if (err) reject(err);
+                  else resolve();
+                });
+              });
+              console.log('🧪 Test driver account created: +1234567890 / password123');
             }
           } catch (error) {
             console.log('Note: Could not create test user:', error.message);
@@ -88,6 +98,57 @@ const dbHelpers = {
         if (err) reject(err);
         else resolve(row);
       });
+    });
+  },
+
+  // Get driver by phone
+  getDriverByPhone: (phone) => {
+    return new Promise((resolve, reject) => {
+      db.get('SELECT * FROM drivers WHERE phone = ? AND is_active = 1', [phone], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+  },
+
+  // Update verification code
+  updateVerificationCode: (phone, code) => {
+    return new Promise((resolve, reject) => {
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+      db.run(
+        'UPDATE drivers SET verification_code = ?, verification_expires_at = ? WHERE phone = ?',
+        [code, expiresAt.toISOString(), phone],
+        function(err) {
+          if (err) reject(err);
+          else resolve(this.changes);
+        }
+      );
+    });
+  },
+
+  // Verify phone number
+  verifyPhoneNumber: (phone, code) => {
+    return new Promise((resolve, reject) => {
+      db.get(
+        'SELECT * FROM drivers WHERE phone = ? AND verification_code = ? AND verification_expires_at > CURRENT_TIMESTAMP',
+        [phone, code],
+        (err, row) => {
+          if (err) reject(err);
+          else if (row) {
+            // Mark as verified and clear verification code
+            db.run(
+              'UPDATE drivers SET is_phone_verified = 1, verification_code = NULL, verification_expires_at = NULL WHERE id = ?',
+              [row.id],
+              (updateErr) => {
+                if (updateErr) reject(updateErr);
+                else resolve(row);
+              }
+            );
+          } else {
+            resolve(null);
+          }
+        }
+      );
     });
   },
 

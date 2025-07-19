@@ -1,16 +1,16 @@
-
 // Driver Dashboard Application
 class DriverApp {
     constructor() {
         this.token = localStorage.getItem('authToken');
         this.currentUser = null;
+        this.pendingPhone = null; // Store phone number temporarily during verification
         this.init();
     }
 
     async init() {
         await this.checkHealthStatus();
         this.setupEventListeners();
-        
+
         if (this.token) {
             await this.loadUserData();
             this.showDriverDashboard();
@@ -23,24 +23,32 @@ class DriverApp {
         // Tab switching
         document.getElementById('driver-tab')?.addEventListener('click', () => this.switchTab('driver'));
         document.getElementById('admin-tab')?.addEventListener('click', () => this.switchTab('admin'));
-        
+
         // Auth forms
-        document.getElementById('login-form')?.addEventListener('submit', (e) => this.handleLogin(e));
-        document.getElementById('register-form')?.addEventListener('submit', (e) => this.handleRegister(e));
-        
+        document.getElementById('login-form')?.addEventListener('submit', this.handleLogin.bind(this));
+        document.getElementById('register-form')?.addEventListener('submit', this.handleRegister.bind(this));
+        document.getElementById('verify-form')?.addEventListener('submit', this.handleVerification.bind(this));
+        document.getElementById('resend-code')?.addEventListener('click', this.resendVerificationCode.bind(this));
+        document.getElementById('show-register')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.toggleAuthMode();
+        });
+        document.getElementById('show-login')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.toggleAuthMode();
+        });
+
         // Driver actions
         document.getElementById('clock-in-btn')?.addEventListener('click', () => this.showClockInForm());
         document.getElementById('clock-out-btn')?.addEventListener('click', () => this.showClockOutForm());
         document.getElementById('view-shifts-btn')?.addEventListener('click', () => this.loadShifts());
-        
+
         // Form submissions
         document.getElementById('clock-in-form')?.addEventListener('submit', (e) => this.handleClockIn(e));
         document.getElementById('clock-out-form')?.addEventListener('submit', (e) => this.handleClockOut(e));
-        
-        // Auth toggle
-        document.getElementById('show-register')?.addEventListener('click', () => this.toggleAuthMode());
-        document.getElementById('show-login')?.addEventListener('click', () => this.toggleAuthMode());
-        
+
+
+
         // Logout
         document.getElementById('logout-btn')?.addEventListener('click', () => this.logout());
     }
@@ -68,7 +76,7 @@ class DriverApp {
         try {
             const response = await fetch('/api/health');
             const data = await response.json();
-            
+
             const healthStatus = document.getElementById('health-status');
             if (healthStatus) {
                 healthStatus.textContent = data.message;
@@ -88,7 +96,7 @@ class DriverApp {
             <div class="auth-container">
                 <div class="auth-card">
                     <h2 id="auth-title">Driver Login</h2>
-                    
+
                     <form id="login-form" class="auth-form">
                         <input type="email" id="login-email" placeholder="Email" required>
                         <input type="password" id="login-password" placeholder="Password" required>
@@ -99,10 +107,10 @@ class DriverApp {
                         </p>
                     </form>
 
-                    <form id="register-form" class="auth-form hidden">
+                    <form id="register-form" class="auth-form">
                         <input type="text" id="register-name" placeholder="Full Name" required>
-                        <input type="email" id="register-email" placeholder="Email" required>
-                        <input type="tel" id="register-phone" placeholder="Phone Number">
+                        <input type="tel" id="register-phone" placeholder="Phone Number" required>
+                        <input type="email" id="register-email" placeholder="Email">
                         <input type="password" id="register-password" placeholder="Password" required>
                         <button type="submit" class="auth-btn">Register</button>
                         <p class="auth-toggle">
@@ -110,6 +118,15 @@ class DriverApp {
                             <a href="#" id="show-login">Login here</a>
                         </p>
                     </form>
+
+                    <form id="verify-form" class="auth-form hidden">
+                        <p>Please enter the verification code sent to your phone.</p>
+                        <input type="tel" id="verify-phone" placeholder="Phone Number" readonly>
+                        <input type="text" id="verify-code" placeholder="Verification Code" required>
+                        <button type="submit" class="auth-btn">Verify</button>
+                        <button type="button" id="resend-code" class="cancel-btn">Resend Code</button>
+                    </form>
+
                 </div>
             </div>
         `;
@@ -143,7 +160,7 @@ class DriverApp {
             <div id="action-forms" class="forms-container"></div>
             <div id="shifts-display" class="shifts-container"></div>
         `;
-        
+
         this.setupEventListeners();
         this.loadDriverStatus();
     }
@@ -152,14 +169,17 @@ class DriverApp {
         const loginForm = document.getElementById('login-form');
         const registerForm = document.getElementById('register-form');
         const authTitle = document.getElementById('auth-title');
+        const verifyForm = document.getElementById('verify-form');
 
         if (loginForm.classList.contains('hidden')) {
             loginForm.classList.remove('hidden');
             registerForm.classList.add('hidden');
+            verifyForm.classList.add('hidden');
             authTitle.textContent = 'Driver Login';
         } else {
             loginForm.classList.add('hidden');
             registerForm.classList.remove('hidden');
+            verifyForm.classList.add('hidden');
             authTitle.textContent = 'Driver Registration';
         }
     }
@@ -195,20 +215,24 @@ class DriverApp {
     async handleRegister(e) {
         e.preventDefault();
         const name = document.getElementById('register-name').value;
-        const email = document.getElementById('register-email').value;
         const phone = document.getElementById('register-phone').value;
+        const email = document.getElementById('register-email').value;
         const password = document.getElementById('register-password').value;
 
         try {
             const response = await fetch('/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, email, phone, password })
+                body: JSON.stringify({ name, phone, email, password })
             });
 
             const data = await response.json();
 
-            if (response.ok) {
+            if (response.ok && data.requiresVerification) {
+                this.pendingPhone = phone;
+                this.showVerificationForm();
+                this.showMessage('Registration successful! Please verify your phone.', 'success');
+            } else if (response.ok) {
                 this.showMessage('Registration successful! Please login.', 'success');
                 this.toggleAuthMode();
             } else {
@@ -216,6 +240,63 @@ class DriverApp {
             }
         } catch (error) {
             this.showMessage('Registration failed. Please try again.', 'error');
+        }
+    }
+
+    showVerificationForm() {
+        const registerForm = document.getElementById('register-form');
+        const verifyForm = document.getElementById('verify-form');
+
+        registerForm.classList.add('hidden');
+        verifyForm.classList.remove('hidden');
+
+        document.getElementById('verify-phone').value = this.pendingPhone;
+    }
+
+    async handleVerification(e) {
+        e.preventDefault();
+        const phone = document.getElementById('verify-phone').value;
+        const code = document.getElementById('verify-code').value;
+
+        try {
+            const response = await fetch('/api/auth/verify-phone', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone, code })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                this.showMessage('Phone verified successfully! You can now login.', 'success');
+                this.showAuthScreen(); // Go back to login
+            } else {
+                this.showMessage(data.error, 'error');
+            }
+        } catch (error) {
+            this.showMessage('Verification failed. Please try again.', 'error');
+        }
+    }
+
+    async resendVerificationCode() {
+        const phone = document.getElementById('verify-phone').value;
+
+        try {
+            const response = await fetch('/api/auth/send-verification', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                this.showMessage('New verification code sent!', 'success');
+            } else {
+                this.showMessage(data.error, 'error');
+            }
+        } catch (error) {
+            this.showMessage('Failed to resend code. Please try again.', 'error');
         }
     }
 
@@ -400,9 +481,9 @@ class DriverApp {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${type}`;
         messageDiv.textContent = message;
-        
+
         document.body.appendChild(messageDiv);
-        
+
         setTimeout(() => {
             messageDiv.remove();
         }, 3000);
