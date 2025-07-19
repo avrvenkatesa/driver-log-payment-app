@@ -546,7 +546,7 @@ const dbHelpers = {
             overtimePay: Math.round(overtimePay * 100) / 100,
             fuelAllowance: Math.round(fuelAllowance * 100) / 100,
             grossPay: Math.round(grossPay * 100) / 100,
-            shifts: shifts
+            shiftsDetails: shifts
           };
 
           resolve(payrollData);
