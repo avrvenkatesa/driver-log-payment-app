@@ -308,6 +308,9 @@ class DriverApp {
                             second: '2-digit',
                             hour12: false
                         })}</p>
+                            second: '2-digit',
+                            hour12: false
+                        })}</p>
                         <p>${this.translator.t('startOdometer')}: ${shift.start_odometer} ${this.translator.t('km')}</p>
                     </div>
                 `;
