@@ -9,7 +9,6 @@ class DriverApp {
     }
 
     async init() {
-        await this.checkHealthStatus();
         this.initializeLanguage();
         this.setupEventListeners();
 
@@ -35,11 +34,7 @@ class DriverApp {
         document.getElementById('driver-tab').textContent = this.translator.t('driverDashboard');
         document.getElementById('admin-tab').textContent = this.translator.t('adminPanel');
 
-        // Update health status if visible
-        const healthStatus = document.getElementById('health-status');
-        if (healthStatus && healthStatus.textContent.includes('running')) {
-            healthStatus.textContent = this.translator.t('serverHealthy');
-        }
+        
 
         // Refresh current view
         if (this.token) {
@@ -179,11 +174,6 @@ class DriverApp {
             <div class="dashboard-header">
                 <h2>${this.translator.t('welcome')}, ${this.currentUser?.name || this.translator.t('driverDashboard')}!</h2>
                 <button id="logout-btn" class="logout-btn">${this.translator.t('logout')}</button>
-            </div>
-
-            <div class="status-card">
-                <h3>${this.translator.t('systemStatus')}</h3>
-                <div id="health-status">${this.translator.t('checking')}</div>
             </div>
 
             <div class="shift-status-card">
