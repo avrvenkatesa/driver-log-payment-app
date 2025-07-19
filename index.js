@@ -215,6 +215,38 @@ app.get('/api/admin/driver/:driverId', authenticateToken, async (req, res) => {
   }
 });
 
+// Payroll API routes (protected)
+app.get('/api/admin/payroll/:year/:month', authenticateToken, async (req, res) => {
+  try {
+    const { year, month } = req.params;
+    const payrollSummary = await dbHelpers.getPayrollSummary(year, month);
+    res.json({ payrollSummary });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to generate payroll summary' });
+  }
+});
+
+app.get('/api/admin/payroll/driver/:driverId/:year/:month', authenticateToken, async (req, res) => {
+  try {
+    const { driverId, year, month } = req.params;
+    const payroll = await dbHelpers.calculateDriverPayroll(driverId, year, month);
+    res.json({ payroll });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to calculate driver payroll' });
+  }
+});
+
+app.get('/api/driver/payroll/:year/:month', authenticateToken, async (req, res) => {
+  try {
+    const driverId = req.user.driverId;
+    const { year, month } = req.params;
+    const payroll = await dbHelpers.calculateDriverPayroll(driverId, year, month);
+    res.json({ payroll });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to calculate payroll' });
+  }
+});
+
 // Create test data for July 2025 (protected route)
 app.post('/api/driver/create-test-data', authenticateToken, async (req, res) => {
   try {

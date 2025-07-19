@@ -451,6 +451,138 @@ const dbHelpers = {
     });
   },
 
+  // Calculate payroll for a driver for a specific month
+  calculateDriverPayroll: async (driverId, year, month) => {
+    return new Promise((resolve, reject) => {
+      const startDate = `${year}-${month.padStart(2, '0')}-01`;
+      const endDate = new Date(year, month, 0).toISOString().split('T')[0]; // Last day of month
+      
+      db.all(
+        `SELECT * FROM shifts 
+         WHERE driver_id = ? 
+         AND date(clock_in_time) BETWEEN ? AND ?
+         AND clock_out_time IS NOT NULL
+         ORDER BY clock_in_time`,
+        [driverId, startDate, endDate],
+        (err, shifts) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          // Payroll configuration
+          const BASE_SALARY = 27000; // ₹27,000 per month
+          const OVERTIME_RATE = 100; // ₹100 per hour
+          const FUEL_ALLOWANCE_PER_DAY = 33.30; // ₹33.30 per day worked
+
+          let totalOvertimeMinutes = 0;
+          let workedDays = new Set();
+          let totalRegularMinutes = 0;
+          let totalDistance = 0;
+
+          shifts.forEach(shift => {
+            const clockInTime = new Date(shift.clock_in_time);
+            const clockOutTime = new Date(shift.clock_out_time);
+            const dateKey = shift.clock_in_time.split(' ')[0]; // Get date part
+            
+            workedDays.add(dateKey);
+            totalDistance += shift.total_distance || 0;
+
+            // Calculate overtime based on time and day
+            const shiftDuration = shift.shift_duration_minutes || 0;
+            let overtimeMinutes = 0;
+            let regularMinutes = shiftDuration;
+
+            // Check if it's Sunday (overtime)
+            const dayOfWeek = clockInTime.getDay();
+            if (dayOfWeek === 0) { // Sunday
+              overtimeMinutes += shiftDuration;
+              regularMinutes = 0;
+            } else {
+              // Check for early morning overtime (before 8 AM)
+              const startHour = clockInTime.getHours();
+              if (startHour < 8) {
+                const earlyMinutes = (8 - startHour) * 60 - clockInTime.getMinutes();
+                overtimeMinutes += Math.min(earlyMinutes, shiftDuration);
+              }
+
+              // Check for late evening overtime (after 8 PM)
+              const endHour = clockOutTime.getHours();
+              if (endHour >= 20 || (endHour === 19 && clockOutTime.getMinutes() > 0)) {
+                const lateStart = new Date(clockOutTime);
+                lateStart.setHours(20, 0, 0, 0);
+                if (clockOutTime > lateStart) {
+                  const lateMinutes = (clockOutTime - lateStart) / (1000 * 60);
+                  overtimeMinutes += lateMinutes;
+                }
+              }
+
+              regularMinutes = Math.max(0, shiftDuration - overtimeMinutes);
+            }
+
+            totalOvertimeMinutes += overtimeMinutes;
+            totalRegularMinutes += regularMinutes;
+          });
+
+          // Calculate final amounts
+          const overtimeHours = totalOvertimeMinutes / 60;
+          const regularHours = totalRegularMinutes / 60;
+          const daysWorked = workedDays.size;
+          
+          const overtimePay = overtimeHours * OVERTIME_RATE;
+          const fuelAllowance = daysWorked * FUEL_ALLOWANCE_PER_DAY;
+          const grossPay = BASE_SALARY + overtimePay + fuelAllowance;
+
+          const payrollData = {
+            driverId,
+            month: parseInt(month),
+            year: parseInt(year),
+            shifts: shifts.length,
+            daysWorked,
+            totalDistance,
+            regularHours: Math.round(regularHours * 100) / 100,
+            overtimeHours: Math.round(overtimeHours * 100) / 100,
+            baseSalary: BASE_SALARY,
+            overtimePay: Math.round(overtimePay * 100) / 100,
+            fuelAllowance: Math.round(fuelAllowance * 100) / 100,
+            grossPay: Math.round(grossPay * 100) / 100,
+            shifts: shifts
+          };
+
+          resolve(payrollData);
+        }
+      );
+    });
+  },
+
+  // Get payroll summary for all drivers for a specific month
+  getPayrollSummary: async (year, month) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const drivers = await dbHelpers.getAllDrivers();
+        const payrollSummaries = [];
+
+        for (const driver of drivers) {
+          if (driver.is_active) {
+            const payroll = await dbHelpers.calculateDriverPayroll(driver.id, year, month);
+            payrollSummaries.push({
+              driver: {
+                id: driver.id,
+                name: driver.name,
+                phone: driver.phone
+              },
+              payroll
+            });
+          }
+        }
+
+        resolve(payrollSummaries);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  },
+
   // Create test data for July 2025
   createTestData: async (driverId) => {
     return new Promise((resolve, reject) => {

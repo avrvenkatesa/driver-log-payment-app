@@ -72,6 +72,7 @@ class DriverApp {
         document.getElementById('clock-out-btn')?.addEventListener('click', () => this.showClockOutForm());
         document.getElementById('view-shifts-btn')?.addEventListener('click', () => this.loadShifts());
         document.getElementById('view-monthly-shifts-btn')?.addEventListener('click', () => this.loadMonthlyShifts());
+        document.getElementById('view-payroll-btn')?.addEventListener('click', () => this.loadDriverPayroll());
         document.getElementById('create-test-data-btn')?.addEventListener('click', () => this.createTestData());
 
         // Form submissions
@@ -191,6 +192,7 @@ class DriverApp {
                 <button id="clock-out-btn" class="action-btn">${this.translator.t('endShift')}</button>
                 <button id="view-shifts-btn" class="action-btn">${this.translator.t('viewTodaysShifts')}</button>
                 <button id="view-monthly-shifts-btn" class="action-btn">${this.translator.t('viewMonthlyShifts')}</button>
+                <button id="view-payroll-btn" class="action-btn">${this.translator.t('viewPayroll')}</button>
                 <button id="create-test-data-btn" class="action-btn" style="background-color: #ff9800;">Create Test Data</button>
             </div>
 
@@ -571,6 +573,67 @@ class DriverApp {
         }
     }
 
+    async loadDriverPayroll() {
+        try {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth() + 1;
+
+            const response = await fetch(`/api/driver/payroll/${year}/${month}`, {
+                headers: { 'Authorization': `Bearer ${this.token}` }
+            });
+
+            const data = await response.json();
+            const shiftsDiv = document.getElementById('shifts-display');
+
+            if (data.payroll) {
+                const payroll = data.payroll;
+                
+                shiftsDiv.innerHTML = `
+                    <div class="shifts-card">
+                        <h3>${this.translator.t('payrollSummary')} - ${this.getMonthName(month)} ${year}</h3>
+                        
+                        <div class="payroll-summary">
+                            <div class="payroll-section">
+                                <h4>${this.translator.t('workSummary')}:</h4>
+                                <p>${this.translator.t('totalShifts')}: ${payroll.shifts}</p>
+                                <p>${this.translator.t('daysWorked')}: ${payroll.daysWorked}</p>
+                                <p>${this.translator.t('totalDistance')}: ${payroll.totalDistance} ${this.translator.t('km')}</p>
+                                <p>${this.translator.t('regularHours')}: ${payroll.regularHours}h</p>
+                                <p>${this.translator.t('overtimeHours')}: ${payroll.overtimeHours}h</p>
+                            </div>
+                            
+                            <div class="payroll-section">
+                                <h4>${this.translator.t('paymentBreakdown')}:</h4>
+                                <p>${this.translator.t('baseSalary')}: ₹${payroll.baseSalary.toLocaleString()}</p>
+                                <p>${this.translator.t('overtimePay')}: ₹${payroll.overtimePay.toLocaleString()}</p>
+                                <p>${this.translator.t('fuelAllowance')}: ₹${payroll.fuelAllowance.toLocaleString()}</p>
+                                <hr style="margin: 10px 0;">
+                                <p><strong>${this.translator.t('grossPay')}: ₹${payroll.grossPay.toLocaleString()}</strong></p>
+                            </div>
+                        </div>
+                        
+                        <div class="payroll-notes">
+                            <small>
+                                <p>• ${this.translator.t('overtimeNote')}</p>
+                                <p>• ${this.translator.t('fuelAllowanceNote')}</p>
+                            </small>
+                        </div>
+                    </div>
+                `;
+            } else {
+                shiftsDiv.innerHTML = `
+                    <div class="shifts-card">
+                        <h3>${this.translator.t('payrollSummary')} - ${this.getMonthName(month)} ${year}</h3>
+                        <p>${this.translator.t('noPayrollData')}</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            this.showMessage(this.translator.t('failedToLoadPayroll'), 'error');
+        }
+    }
+
     async createTestData() {
         try {
             const response = await fetch('/api/driver/create-test-data', {
@@ -678,6 +741,7 @@ class DriverApp {
                 <div class="admin-tabs">
                     <button id="drivers-tab" class="admin-tab-btn active">${this.translator.t('drivers')}</button>
                     <button id="shifts-tab" class="admin-tab-btn">${this.translator.t('shifts')}</button>
+                    <button id="payroll-tab" class="admin-tab-btn">${this.translator.t('payrollSummary')}</button>
                     <button id="reports-tab" class="admin-tab-btn">${this.translator.t('reports')}</button>
                     <button id="settings-tab" class="admin-tab-btn">${this.translator.t('settings')}</button>
                 </div>
@@ -691,6 +755,7 @@ class DriverApp {
         // Set up admin tab event listeners
         document.getElementById('drivers-tab')?.addEventListener('click', () => this.showAdminTab('drivers'));
         document.getElementById('shifts-tab')?.addEventListener('click', () => this.showAdminTab('shifts'));
+        document.getElementById('payroll-tab')?.addEventListener('click', () => this.showAdminTab('payroll'));
         document.getElementById('reports-tab')?.addEventListener('click', () => this.showAdminTab('reports'));
         document.getElementById('settings-tab')?.addEventListener('click', () => this.showAdminTab('settings'));
 
@@ -708,6 +773,9 @@ class DriverApp {
                 break;
             case 'shifts':
                 this.loadShiftsAnalytics();
+                break;
+            case 'payroll':
+                this.loadPayrollSummary();
                 break;
             case 'reports':
                 this.loadReports();
@@ -931,6 +999,177 @@ class DriverApp {
         `;
 
         document.getElementById('shifts-analytics-list').innerHTML = tableHtml;
+    }
+
+    async loadPayrollSummary() {
+        const content = document.getElementById('admin-content');
+        content.innerHTML = `
+            <div class="admin-section-content">
+                <div class="section-header">
+                    <h3>${this.translator.t('payrollSummary')}</h3>
+                    <div class="filter-controls">
+                        <select id="payroll-month">
+                            <option value="1">January</option>
+                            <option value="2">February</option>
+                            <option value="3">March</option>
+                            <option value="4">April</option>
+                            <option value="5">May</option>
+                            <option value="6">June</option>
+                            <option value="7" selected>July</option>
+                            <option value="8">August</option>
+                            <option value="9">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                        </select>
+                        <select id="payroll-year">
+                            <option value="2024">2024</option>
+                            <option value="2025" selected>2025</option>
+                            <option value="2026">2026</option>
+                        </select>
+                        <button id="load-payroll-btn" class="action-btn secondary">
+                            ${this.translator.t('loadPayroll')}
+                        </button>
+                    </div>
+                </div>
+
+                <div id="payroll-summary-display" class="data-table-container">
+                    <div class="loading">${this.translator.t('selectMonthToLoadPayroll')}</div>
+                </div>
+            </div>
+        `;
+
+        // Set up event listener
+        document.getElementById('load-payroll-btn')?.addEventListener('click', () => this.loadPayrollData());
+    }
+
+    async loadPayrollData() {
+        try {
+            const month = document.getElementById('payroll-month').value;
+            const year = document.getElementById('payroll-year').value;
+
+            const response = await fetch(`/api/admin/payroll/${year}/${month}`, {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.displayPayrollSummary(data.payrollSummary, month, year);
+            } else {
+                document.getElementById('payroll-summary-display').innerHTML = 
+                    `<div class="error">${this.translator.t('failedToLoadPayroll')}</div>`;
+            }
+        } catch (error) {
+            document.getElementById('payroll-summary-display').innerHTML = 
+                `<div class="error">${this.translator.t('connectionError')}</div>`;
+        }
+    }
+
+    displayPayrollSummary(payrollSummaries, month, year) {
+        if (payrollSummaries.length === 0) {
+            document.getElementById('payroll-summary-display').innerHTML = 
+                `<div class="no-data">${this.translator.t('noPayrollDataForPeriod')}</div>`;
+            return;
+        }
+
+        // Calculate totals
+        const totals = payrollSummaries.reduce((acc, item) => {
+            const payroll = item.payroll;
+            acc.totalDrivers += 1;
+            acc.totalShifts += payroll.shifts;
+            acc.totalDistance += payroll.totalDistance;
+            acc.totalRegularHours += payroll.regularHours;
+            acc.totalOvertimeHours += payroll.overtimeHours;
+            acc.totalBaseSalary += payroll.baseSalary;
+            acc.totalOvertimePay += payroll.overtimePay;
+            acc.totalFuelAllowance += payroll.fuelAllowance;
+            acc.totalGrossPay += payroll.grossPay;
+            return acc;
+        }, {
+            totalDrivers: 0,
+            totalShifts: 0,
+            totalDistance: 0,
+            totalRegularHours: 0,
+            totalOvertimeHours: 0,
+            totalBaseSalary: 0,
+            totalOvertimePay: 0,
+            totalFuelAllowance: 0,
+            totalGrossPay: 0
+        });
+
+        const tableHtml = `
+            <div class="payroll-overview">
+                <h4>${this.translator.t('payrollOverview')} - ${this.getMonthName(parseInt(month))} ${year}</h4>
+                <div class="analytics-cards">
+                    <div class="analytics-card">
+                        <h4>${this.translator.t('totalDrivers')}</h4>
+                        <div class="stat-value">${totals.totalDrivers}</div>
+                    </div>
+                    <div class="analytics-card">
+                        <h4>${this.translator.t('totalShifts')}</h4>
+                        <div class="stat-value">${totals.totalShifts}</div>
+                    </div>
+                    <div class="analytics-card">
+                        <h4>${this.translator.t('totalDistance')}</h4>
+                        <div class="stat-value">${totals.totalDistance} km</div>
+                    </div>
+                    <div class="analytics-card">
+                        <h4>${this.translator.t('totalPayroll')}</h4>
+                        <div class="stat-value">₹${totals.totalGrossPay.toLocaleString()}</div>
+                    </div>
+                </div>
+            </div>
+
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>${this.translator.t('driver')}</th>
+                        <th>${this.translator.t('shifts')}</th>
+                        <th>${this.translator.t('days')}</th>
+                        <th>${this.translator.t('regularHours')}</th>
+                        <th>${this.translator.t('overtimeHours')}</th>
+                        <th>${this.translator.t('baseSalary')}</th>
+                        <th>${this.translator.t('overtimePay')}</th>
+                        <th>${this.translator.t('fuelAllowance')}</th>
+                        <th>${this.translator.t('grossPay')}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${payrollSummaries.map(item => {
+                        const driver = item.driver;
+                        const payroll = item.payroll;
+                        return `
+                            <tr>
+                                <td>${driver.name}</td>
+                                <td>${payroll.shifts}</td>
+                                <td>${payroll.daysWorked}</td>
+                                <td>${payroll.regularHours}h</td>
+                                <td>${payroll.overtimeHours}h</td>
+                                <td>₹${payroll.baseSalary.toLocaleString()}</td>
+                                <td>₹${payroll.overtimePay.toLocaleString()}</td>
+                                <td>₹${payroll.fuelAllowance.toLocaleString()}</td>
+                                <td><strong>₹${payroll.grossPay.toLocaleString()}</strong></td>
+                            </tr>
+                        `;
+                    }).join('')}
+                    <tr class="totals-row">
+                        <td><strong>TOTALS</strong></td>
+                        <td><strong>${totals.totalShifts}</strong></td>
+                        <td><strong>-</strong></td>
+                        <td><strong>${Math.round(totals.totalRegularHours * 10) / 10}h</strong></td>
+                        <td><strong>${Math.round(totals.totalOvertimeHours * 10) / 10}h</strong></td>
+                        <td><strong>₹${totals.totalBaseSalary.toLocaleString()}</strong></td>
+                        <td><strong>₹${Math.round(totals.totalOvertimePay).toLocaleString()}</strong></td>
+                        <td><strong>₹${Math.round(totals.totalFuelAllowance).toLocaleString()}</strong></td>
+                        <td><strong>₹${Math.round(totals.totalGrossPay).toLocaleString()}</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        `;
+
+        document.getElementById('payroll-summary-display').innerHTML = tableHtml;
     }
 
     async loadReports() {
