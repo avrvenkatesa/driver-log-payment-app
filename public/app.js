@@ -427,41 +427,17 @@ class DriverApp {
                 shiftsDiv.innerHTML = `
                     <div class="shifts-card">
                         <h3>${this.translator.t('todaysShifts')}</h3>
-                        ${data.shifts.map(shift => {
-                            const startTime = new Intl.DateTimeFormat('en-GB', {
-                                timeZone: 'Asia/Kolkata',
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                second: '2-digit',
-                                hour12: false
-                            }).format(new Date(shift.clock_in_time));
-                            
-                            const endTime = shift.clock_out_time ? new Intl.DateTimeFormat('en-GB', {
-                                timeZone: 'Asia/Kolkata',
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                second: '2-digit',
-                                hour12: false
-                            }).format(new Date(shift.clock_out_time)) : null;
-                            
-                            return `
+                        ${data.shifts.map(shift => `
                             <div class="shift-item">
                                 <p><strong>${this.translator.t('shift')} #${shift.id}</strong></p>
-                                <p>${this.translator.t('start')}: ${startTime}</p>
+                                <p>${this.translator.t('start')}: ${new Date(shift.clock_in_time).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
                                 ${shift.clock_out_time ? `
-                                    <p>${this.translator.t('end')}: ${endTime}</p>
+                                    <p>${this.translator.t('end')}: ${new Date(shift.clock_out_time).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
                                     <p>${this.translator.t('distance')}: ${shift.total_distance || 0} ${this.translator.t('km')}</p>
                                     <p>${this.translator.t('duration')}: ${Math.round(shift.shift_duration_minutes || 0)} ${this.translator.t('minutes')}</p>
                                 ` : `<p><strong>${this.translator.t('currentlyActive')}</strong></p>`}
                             </div>
-                            `;
-                        }).join('')}
+                        `).join('')}
                     </div>
                 `;
             } else {
