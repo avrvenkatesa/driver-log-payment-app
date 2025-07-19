@@ -73,7 +73,6 @@ class DriverApp {
         document.getElementById('view-shifts-btn')?.addEventListener('click', () => this.loadShifts());
         document.getElementById('view-monthly-shifts-btn')?.addEventListener('click', () => this.loadMonthlyShifts());
         document.getElementById('view-payroll-btn')?.addEventListener('click', () => this.loadDriverPayroll());
-        document.getElementById('create-test-data-btn')?.addEventListener('click', () => this.createTestData());
 
         // Form submissions
         document.getElementById('clock-in-form')?.addEventListener('submit', (e) => this.handleClockIn(e));
@@ -193,7 +192,6 @@ class DriverApp {
                 <button id="view-shifts-btn" class="action-btn">${this.translator.t('viewTodaysShifts')}</button>
                 <button id="view-monthly-shifts-btn" class="action-btn">${this.translator.t('viewMonthlyShifts')}</button>
                 <button id="view-payroll-btn" class="action-btn">${this.translator.t('viewPayroll')}</button>
-                <button id="create-test-data-btn" class="action-btn" style="background-color: #ff9800;">Create Test Data</button>
             </div>
 
             <div id="action-forms" class="forms-container"></div>
