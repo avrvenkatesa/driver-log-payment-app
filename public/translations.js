@@ -1,5 +1,6 @@
-
 // Translation system for Driver Log App
+// Ensure TranslationManager is only declared once
+if (typeof TranslationManager === 'undefined') {
 class TranslationManager {
     constructor() {
         this.currentLanguage = localStorage.getItem('preferredLanguage') || 'en';
@@ -377,7 +378,9 @@ class TranslationManager {
         return translation && translation[key] ? translation[key] : key;
     }
 }
-// Translation Manager for multi-language support
+}
+// Ensure TranslationManager is only declared once
+if (typeof TranslationManager === 'undefined') {
 class TranslationManager {
     constructor() {
         this.currentLanguage = localStorage.getItem('selectedLanguage') || 'en';
@@ -387,7 +390,7 @@ class TranslationManager {
                 appTitle: 'Driver Log & Payment App',
                 driverDashboard: 'Driver Dashboard',
                 adminPanel: 'Admin Panel',
-                
+
                 // Authentication
                 driverLogin: 'Driver Login',
                 driverRegistration: 'Driver Registration',
@@ -404,7 +407,7 @@ class TranslationManager {
                 alreadyHaveAccount: 'Already have an account?',
                 loginHere: 'Login here',
                 fieldsMarkedRequired: 'Fields marked with * are required',
-                
+
                 // Dashboard
                 welcome: 'Welcome',
                 shiftStatus: 'Shift Status',
@@ -413,7 +416,7 @@ class TranslationManager {
                 notOnShift: 'Not on shift',
                 readyForNewShift: 'Ready for a new shift',
                 checking: 'Checking...',
-                
+
                 // Shift actions
                 startShift: 'Start Shift',
                 endShift: 'End Shift',
@@ -425,7 +428,7 @@ class TranslationManager {
                 clockIn: 'Clock In',
                 clockOut: 'Clock Out',
                 cancel: 'Cancel',
-                
+
                 // Shift details
                 shift: 'Shift',
                 start: 'Start',
@@ -439,13 +442,13 @@ class TranslationManager {
                 duration: 'Duration',
                 km: 'km',
                 currentlyActive: 'Currently Active',
-                
+
                 // Time periods
                 todaysShifts: "Today's Shifts",
                 monthlyShifts: 'Monthly Shifts',
                 noShiftsToday: 'No shifts recorded today',
                 noShiftsThisMonth: 'No shifts recorded this month',
-                
+
                 // Payroll
                 payrollSummary: 'Payroll Summary',
                 workSummary: 'Work Summary',
@@ -462,7 +465,7 @@ class TranslationManager {
                 noPayrollData: 'No payroll data available for this period',
                 overtimeNote: 'Overtime calculated for hours beyond 8 per day',
                 fuelAllowanceNote: 'Fuel allowance calculated per working day',
-                
+
                 // Admin
                 drivers: 'Drivers',
                 shifts: 'Shifts',
@@ -470,7 +473,7 @@ class TranslationManager {
                 settings: 'Settings',
                 driversManagement: 'Drivers Management',
                 shiftsAnalytics: 'Shifts Analytics',
-                
+
                 // Data table headers
                 id: 'ID',
                 name: 'Name',
@@ -482,24 +485,24 @@ class TranslationManager {
                 view: 'View',
                 shiftId: 'Shift ID',
                 driver: 'Driver',
-                
+
                 // Status labels
                 active: 'Active',
                 inactive: 'Inactive',
                 completed: 'Completed',
                 unverified: 'Unverified',
-                
+
                 // Time filters
                 today: 'Today',
                 thisWeek: 'This Week',
                 thisMonth: 'This Month',
                 allTime: 'All Time',
-                
+
                 // Analytics
                 totalHours: 'Total Hours',
                 activeDrivers: 'Active Drivers',
                 avgShiftLength: 'Avg Shift Length',
-                
+
                 // Reports
                 monthlyReport: 'Monthly Report',
                 driverReport: 'Driver Report',
@@ -508,7 +511,7 @@ class TranslationManager {
                 generate: 'Generate',
                 date: 'Date',
                 hours: 'Hours',
-                
+
                 // Settings
                 dataManagement: 'Data Management',
                 dataManagementDesc: 'Manage application data and settings',
@@ -518,18 +521,18 @@ class TranslationManager {
                 version: 'Version',
                 database: 'Database',
                 uptime: 'Uptime',
-                
+
                 // Actions and buttons
                 refresh: 'Refresh',
                 loading: 'Loading',
                 loadPayroll: 'Load Payroll',
-                
+
                 // Messages
                 loginSuccessful: 'Login successful',
                 registrationSuccessful: 'Registration successful',
                 clockedInSuccessfully: 'Clocked in successfully',
                 clockedOutSuccessfully: 'Clocked out successfully',
-                
+
                 // Errors
                 loginFailed: 'Login failed',
                 registrationFailed: 'Registration failed',
@@ -544,10 +547,10 @@ class TranslationManager {
                 selectMonthToLoadPayroll: 'Select a month to load payroll data',
                 noPayrollDataForPeriod: 'No payroll data found for this period',
                 failedToGenerateReport: 'Failed to generate report',
-                
+
                 // Month summary
                 monthSummary: 'Month Summary',
-                
+
                 // Days/weeks
                 days: 'Days'
             },
@@ -556,7 +559,7 @@ class TranslationManager {
                 appTitle: 'ஓட்டுநர் பதிவு & சம்பள செயலி',
                 driverDashboard: 'ஓட்டுநர் டாஷ்போர்டு',
                 adminPanel: 'நிர்வாக பேனல்',
-                
+
                 // Authentication
                 driverLogin: 'ஓட்டுநர் உள்நுழைவு',
                 driverRegistration: 'ஓட்டுநர் பதிவு',
@@ -573,7 +576,7 @@ class TranslationManager {
                 alreadyHaveAccount: 'ஏற்கனவே கணக்கு உள்ளதா?',
                 loginHere: 'இங்கே உள்நுழையுங்கள்',
                 fieldsMarkedRequired: '* குறிக்கப்பட்ட புலங்கள் அவசியம்',
-                
+
                 // Dashboard
                 welcome: 'வரவேற்கிறோம்',
                 shiftStatus: 'ஷிப்ட் நிலை',
@@ -582,7 +585,7 @@ class TranslationManager {
                 notOnShift: 'ஷிப்ட்டில் இல்லை',
                 readyForNewShift: 'புதிய ஷிப்ட்டுக்கு தயார்',
                 checking: 'சரிபார்க்கிறது...',
-                
+
                 // Shift actions
                 startShift: 'ஷிப்ட் தொடங்கு',
                 endShift: 'ஷிப்ட் முடி',
@@ -594,7 +597,7 @@ class TranslationManager {
                 clockIn: 'உள்வா',
                 clockOut: 'வெளியேறு',
                 cancel: 'ரத்து செய்',
-                
+
                 // Shift details
                 shift: 'ஷிப்ட்',
                 start: 'தொடக்கம்',
@@ -608,13 +611,13 @@ class TranslationManager {
                 duration: 'கால அளவு',
                 km: 'கி.மீ',
                 currentlyActive: 'தற்போது செயல்பாட்டில்',
-                
+
                 // Time periods
                 todaysShifts: 'இன்றைய ஷிப்ட்கள்',
                 monthlyShifts: 'மாதாந்திர ஷிப்ட்கள்',
                 noShiftsToday: 'இன்று எந்த ஷிப்ட் பதிவும் இல்லை',
                 noShiftsThisMonth: 'இந்த மாதத்தில் எந்த ஷிப்ட் பதிவும் இல்லை',
-                
+
                 // Payroll
                 payrollSummary: 'சம்பள சுருக்கம்',
                 workSummary: 'வேலை சுருக்கம்',
@@ -631,18 +634,18 @@ class TranslationManager {
                 noPayrollData: 'இந்த காலகட்டத்திற்கு சம்பள தரவு இல்லை',
                 overtimeNote: 'நாளொன்றுக்கு 8 மணி நேரத்துக்கு மேல் கூடுதல் நேர கணக்கீடு',
                 fuelAllowanceNote: 'வேலை செய்த நாட்களுக்கு எரிபொருள் அலவன்ஸ் கணக்கீடு',
-                
+
                 // Common terms
                 totalHours: 'மொத்த மணிநேரங்கள்',
                 loading: 'ஏற்றுகிறது',
                 refresh: 'புதுப்பி',
-                
+
                 // Messages
                 loginSuccessful: 'உள்நுழைவு வெற்றிகரமானது',
                 registrationSuccessful: 'பதிவு வெற்றிகரமானது',
                 clockedInSuccessfully: 'வெற்றிகரமாக உள்வந்தீர்கள்',
                 clockedOutSuccessfully: 'வெற்றிகரமாக வெளியேறினீர்கள்',
-                
+
                 // Month summary
                 monthSummary: 'மாத சுருக்கம்'
             }
@@ -662,4 +665,6 @@ class TranslationManager {
         const translation = this.translations[this.currentLanguage]?.[key];
         return translation || this.translations['en'][key] || key;
     }
+}
+}
 }
