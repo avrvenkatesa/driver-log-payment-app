@@ -227,6 +227,31 @@ app.get('/api/admin/driver/:driverId', authenticateToken, async (req, res) => {
   }
 });
 
+// Admin: Update driver status (activate/deactivate)
+app.put('/api/admin/driver/:driverId/status', authenticateToken, async (req, res) => {
+  try {
+    const { driverId } = req.params;
+    const { is_active } = req.body;
+
+    if (typeof is_active !== 'boolean') {
+      return res.status(400).json({ error: 'is_active must be a boolean value' });
+    }
+
+    const changes = await dbHelpers.updateDriverStatus(driverId, is_active);
+    
+    if (changes === 0) {
+      return res.status(404).json({ error: 'Driver not found' });
+    }
+
+    res.json({ 
+      success: true, 
+      message: `Driver ${is_active ? 'activated' : 'deactivated'} successfully` 
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update driver status' });
+  }
+});
+
 // Payroll API routes (protected)
 app.get('/api/admin/payroll/:year/:month', authenticateToken, async (req, res) => {
   try {

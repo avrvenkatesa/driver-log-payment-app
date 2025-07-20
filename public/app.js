@@ -1316,9 +1316,17 @@ class DriverApp {
                             </span></td>
                             <td>${this.formatToIST(driver.created_at)}</td>
                             <td>
-                                <button class="btn-small" data-driver-id="${driver.id}">
+                                <button class="btn-small view-btn" data-driver-id="${driver.id}">
                                     ${this.translator.t('view')}
                                 </button>
+                                ${driver.is_active ? 
+                                    `<button class="btn-small danger deactivate-btn" data-driver-id="${driver.id}" data-driver-name="${driver.name}">
+                                        Deactivate
+                                    </button>` :
+                                    `<button class="btn-small success activate-btn" data-driver-id="${driver.id}" data-driver-name="${driver.name}">
+                                        Activate
+                                    </button>`
+                                }
                             </td>
                         </tr>
                     `).join('')}
@@ -1329,10 +1337,28 @@ class DriverApp {
         document.getElementById('drivers-list').innerHTML = tableHtml;
 
         // Set up view driver detail button event listeners
-        document.querySelectorAll('.btn-small[data-driver-id]').forEach(btn => {
+        document.querySelectorAll('.view-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const driverId = e.target.getAttribute('data-driver-id');
                 this.viewDriverDetails(driverId);
+            });
+        });
+
+        // Set up activate button event listeners
+        document.querySelectorAll('.activate-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const driverId = e.target.getAttribute('data-driver-id');
+                const driverName = e.target.getAttribute('data-driver-name');
+                this.updateDriverStatus(driverId, driverName, true);
+            });
+        });
+
+        // Set up deactivate button event listeners
+        document.querySelectorAll('.deactivate-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const driverId = e.target.getAttribute('data-driver-id');
+                const driverName = e.target.getAttribute('data-driver-name');
+                this.updateDriverStatus(driverId, driverName, false);
             });
         });
     }
@@ -2107,6 +2133,35 @@ class DriverApp {
             }
         } catch (error) {
             this.showMessage('Connection error', 'error');
+        }
+    }
+
+    async updateDriverStatus(driverId, driverName, isActive) {
+        const action = isActive ? 'activate' : 'deactivate';
+        const confirmation = confirm(`Are you sure you want to ${action} driver "${driverName}"?`);
+        
+        if (!confirmation) return;
+
+        try {
+            const response = await fetch(`/api/admin/driver/${driverId}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.token}`
+                },
+                body: JSON.stringify({ is_active: isActive })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                this.showMessage(data.message, 'success');
+                this.loadDriversData(); // Refresh the drivers list
+            } else {
+                this.showMessage(data.error || `Failed to ${action} driver`, 'error');
+            }
+        } catch (error) {
+            this.showMessage(`Error ${action}ing driver`, 'error');
         }
     }
 

@@ -1,4 +1,3 @@
-
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
@@ -84,7 +83,7 @@ function initializeDatabase() {
           reject(err);
         } else {
           console.log('✅ Database tables initialized successfully');
-          
+
           // Create test user if it doesn't exist
           try {
             const testUser = await dbHelpers.getDriverByPhone('+1234567890');
@@ -109,7 +108,7 @@ function initializeDatabase() {
           } catch (error) {
             console.log('Note: Could not create test user:', error.message);
           }
-          
+
           resolve();
         }
       });
@@ -233,7 +232,7 @@ const dbHelpers = {
         second: '2-digit',
         hour12: false
       }).replace(',', '');
-      
+
       db.run(
         'INSERT INTO shifts (driver_id, clock_in_time, start_odometer) VALUES (?, ?, ?)',
         [driverId, istTime, startOdometer],
@@ -259,19 +258,19 @@ const dbHelpers = {
         second: '2-digit',
         hour12: false
       }).replace(',', '');
-      
+
       // First get the clock_in_time to calculate duration
       db.get('SELECT clock_in_time FROM shifts WHERE id = ?', [shiftId], (err, shift) => {
         if (err) {
           reject(err);
           return;
         }
-        
+
         // Calculate duration between IST times
         const clockInTime = new Date(shift.clock_in_time);
         const clockOutTime = new Date(istTime);
         const durationMinutes = Math.round((clockOutTime - clockInTime) / (1000 * 60));
-        
+
         db.run(
           `UPDATE shifts 
            SET clock_out_time = ?, 
@@ -380,12 +379,28 @@ const dbHelpers = {
     });
   },
 
+    updateDriverStatus: (driverId, isActive) => {
+      return new Promise((resolve, reject) => {
+        db.run(
+          'UPDATE drivers SET is_active = ? WHERE id = ?',
+          [isActive ? 1 : 0, driverId],
+          function(err) {
+            if (err) {
+              reject(err);
+            } else {
+              resolve(this.changes);
+            }
+          }
+        );
+      });
+    },
+
   // Get shifts with analytics for admin
   getShiftsWithAnalytics: (filter) => {
     return new Promise((resolve, reject) => {
       let dateCondition = '';
       const today = new Date().toISOString().split('T')[0];
-      
+
       switch (filter) {
         case 'today':
           dateCondition = `AND date(s.clock_in_time) = date('${today}')`;
@@ -418,7 +433,7 @@ const dbHelpers = {
               totalMinutes: shifts.reduce((sum, shift) => sum + (shift.shift_duration_minutes || 0), 0),
               activeDrivers: new Set(shifts.map(shift => shift.driver_id)).size
             };
-            
+
             resolve({ shifts, summary });
           }
         }
@@ -431,7 +446,7 @@ const dbHelpers = {
     return new Promise((resolve, reject) => {
       const startDate = `${year}-${month.padStart(2, '0')}-01`;
       const endDate = new Date(year, month, 0).toISOString().split('T')[0]; // Last day of month
-      
+
       db.all(
         `SELECT 
            date(clock_in_time) as shift_date,
@@ -454,11 +469,11 @@ const dbHelpers = {
               totalMinutes: dailyData.reduce((sum, day) => sum + (day.total_minutes || 0), 0),
               avgShiftMinutes: 0
             };
-            
+
             if (summary.totalShifts > 0) {
               summary.avgShiftMinutes = summary.totalMinutes / summary.totalShifts;
             }
-            
+
             // Format daily breakdown
             const dailyBreakdown = dailyData.map(day => ({
               date: day.shift_date,
@@ -466,7 +481,7 @@ const dbHelpers = {
               distance: day.total_distance || 0,
               minutes: day.total_minutes || 0
             }));
-            
+
             resolve({
               month,
               year,
@@ -484,7 +499,7 @@ const dbHelpers = {
     return new Promise(async (resolve, reject) => {
       const startDate = `${year}-${month.padStart(2, '0')}-01`;
       const endDate = new Date(year, month, 0).toISOString().split('T')[0]; // Last day of month
-      
+
       try {
         // Get shifts for the month
         const shifts = await new Promise((resolve, reject) => {
@@ -504,7 +519,7 @@ const dbHelpers = {
 
         // Get approved leaves for the month
         const monthLeaves = await dbHelpers.getApprovedLeaves(driverId, year, month);
-        
+
         // Get annual leave count for the year
         const annualLeaveCount = await dbHelpers.getAnnualLeaveCount(driverId, year);
 
@@ -522,7 +537,7 @@ const dbHelpers = {
             const clockInTime = new Date(shift.clock_in_time);
             const clockOutTime = new Date(shift.clock_out_time);
             const dateKey = shift.clock_in_time.split(' ')[0]; // Get date part
-            
+
             workedDays.add(dateKey);
             totalDistance += shift.total_distance || 0;
 
@@ -579,17 +594,17 @@ const dbHelpers = {
         const overtimeHours = totalOvertimeMinutes / 60;
         const regularHours = totalRegularMinutes / 60;
         const daysWorked = workedDays.size;
-        
+
         const overtimePay = overtimeHours * OVERTIME_RATE;
-        
+
         // Fuel allowance: No fuel allowance for any leave days
         const fuelAllowance = daysWorked * FUEL_ALLOWANCE_PER_DAY;
-        
+
         // Salary deductions for unpaid leaves
         const dailySalary = BASE_SALARY / 30; // Assuming 30 days per month
         const unpaidLeaveDeduction = unpaidLeavesThisMonth * dailySalary;
         const adjustedBaseSalary = BASE_SALARY - unpaidLeaveDeduction;
-        
+
         const grossPay = adjustedBaseSalary + overtimePay + fuelAllowance;
 
         const payrollData = {
@@ -692,7 +707,7 @@ const dbHelpers = {
       testShifts.forEach(shift => {
         const clockInTime = `${shift.date} ${shift.startTime}`;
         const clockOutTime = `${shift.date} ${shift.endTime}`;
-        
+
         // Calculate duration
         const startTime = new Date(`${shift.date}T${shift.startTime}`);
         const endTime = new Date(`${shift.date}T${shift.endTime}`);
@@ -721,7 +736,7 @@ const dbHelpers = {
   generateConfigurableTestData: async (config) => {
     return new Promise(async (resolve, reject) => {
       const { driverId, startMonth, endMonth, monthlySalary, overtimeRate, fuelAllowance } = config;
-      
+
       try {
         // Get driver's last shift to continue odometer readings
         const lastShift = await dbHelpers.getLastCompletedShift(driverId);
@@ -738,28 +753,28 @@ const dbHelpers = {
         // Generate shifts for each weekday in the date range
         while (currentDate <= endDate) {
           const dayOfWeek = currentDate.getDay();
-          
+
           // Skip weekends (Saturday = 6, Sunday = 0)
           if (dayOfWeek !== 0 && dayOfWeek !== 6) {
             const dateStr = currentDate.toISOString().split('T')[0];
-            
+
             // Randomize shift times
             const startHours = Math.floor(Math.random() * 3) + 6; // 6-8 AM
             const startMinutes = Math.floor(Math.random() * 60);
             const shiftDuration = 8 + Math.floor(Math.random() * 2); // 8-9 hours
-            
+
             const startTime = `${startHours.toString().padStart(2, '0')}:${startMinutes.toString().padStart(2, '0')}:00`;
-            
+
             const endDateTime = new Date(currentDate);
             endDateTime.setHours(startHours, startMinutes, 0, 0);
             endDateTime.setHours(endDateTime.getHours() + shiftDuration);
-            
+
             const endTime = `${endDateTime.getHours().toString().padStart(2, '0')}:${endDateTime.getMinutes().toString().padStart(2, '0')}:00`;
-            
+
             // Random distance between 120-200 km
             const distance = Math.floor(Math.random() * 80) + 120;
             const endOdometer = currentOdometer + distance;
-            
+
             testShifts.push({
               date: dateStr,
               startTime,
@@ -767,10 +782,10 @@ const dbHelpers = {
               startOdo: currentOdometer,
               endOdo: endOdometer
             });
-            
+
             currentOdometer = endOdometer;
           }
-          
+
           currentDate.setDate(currentDate.getDate() + 1);
         }
 
@@ -785,7 +800,7 @@ const dbHelpers = {
         testShifts.forEach(shift => {
           const clockInTime = `${shift.date} ${shift.startTime}`;
           const clockOutTime = `${shift.date} ${shift.endTime}`;
-          
+
           // Calculate duration
           const startTime = new Date(`${shift.date}T${shift.startTime}`);
           const endTime = new Date(`${shift.date}T${shift.endTime}`);
@@ -908,7 +923,7 @@ const dbHelpers = {
         ? 'SELECT * FROM leave_requests WHERE driver_id = ? AND strftime("%Y", leave_date) = ? ORDER BY leave_date DESC'
         : 'SELECT * FROM leave_requests WHERE driver_id = ? ORDER BY leave_date DESC';
       const params = year ? [driverId, year.toString()] : [driverId];
-      
+
       db.all(query, params, (err, rows) => {
         if (err) reject(err);
         else resolve(rows);
@@ -925,14 +940,14 @@ const dbHelpers = {
         JOIN drivers d ON lr.driver_id = d.id
       `;
       let params = [];
-      
+
       if (status) {
         query += ' WHERE lr.status = ?';
         params.push(status);
       }
-      
+
       query += ' ORDER BY lr.requested_at DESC';
-      
+
       db.all(query, params, (err, rows) => {
         if (err) reject(err);
         else resolve(rows);
@@ -960,7 +975,7 @@ const dbHelpers = {
     return new Promise((resolve, reject) => {
       const startDate = `${year}-${month.padStart(2, '0')}-01`;
       const endDate = new Date(year, month, 0).toISOString().split('T')[0];
-      
+
       db.all(
         `SELECT * FROM leave_requests 
          WHERE driver_id = ? 

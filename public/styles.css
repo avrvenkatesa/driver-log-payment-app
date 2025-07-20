@@ -697,17 +697,25 @@ main {
     background: #007bff;
     color: white;
     border: none;
-    border-radius: 3px;
+    border-radius: 4px;
     cursor: pointer;
-    transition: background-color 0.2s;
+    margin: 2px;
 }
 
-.btn-small:hover {
-    background: #0056b3;
+.btn-small.danger {
+    background: #dc3545;
 }
 
-.btn-small:active {
-    background: #004085;
+.btn-small.success {
+    background: #28a745;
+}
+
+.btn-small.danger:hover {
+    background: #c82333;
+}
+
+.btn-small.success:hover {
+    background: #218838;
 }
 
 /* Analytics Cards */
