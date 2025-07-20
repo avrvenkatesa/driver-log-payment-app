@@ -403,7 +403,8 @@ app.post('/api/driver/leave-request', authenticateToken, async (req, res) => {
 
     // Check if leave request already exists for this date
     const existingRequest = await new Promise((resolve, reject) => {
-      dbHelpers.db.get(
+      const { db } = require('./database');
+      db.get(
         'SELECT * FROM leave_requests WHERE driver_id = ? AND leave_date = ?',
         [driverId, leaveDate],
         (err, row) => {
