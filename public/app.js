@@ -801,7 +801,7 @@ class DriverApp {
                         ${this.translator.t('refresh')}
                     </button>
                 </div>
-                <div id="drivers-list" class="data-table-container">
+                <div id="drivers-list"` class="data-table-container">
                     <div class="loading">${this.translator.t('loading')}...</div>
                 </div>
             </div>
@@ -810,7 +810,7 @@ class DriverApp {
         // Set up refresh button event listener
         document.getElementById('refresh-drivers-btn')?.addEventListener('click', () => this.loadDriversData());
 
-        await this.loadDriversData();```text
+        await this.loadDriversData();
     }
 
     async loadDriversData() {
@@ -1629,8 +1629,7 @@ class DriverApp {
         // Set up event listeners
         document.getElementById('payroll-config-form')?.addEventListener('submit', (e) => this.handlePayrollConfig(e));
         document.getElementById('generate-test-data-form')?.addEventListener('submit', (e) => this.handleGenerateTestData(e));
-        document.getElementById('backup-data-btn')?.addEventListener('click', () => this.confirmAction('backup'));
-        document.getElementById('clear-data-btn')?.addEventListener('click', () => this.confirmAction('clear'));
+        document.getElementById('backup-data-btn')?.addEventListener('click', () => this.confirmAction('backup'));        document.getElementById('clear-data-btn')?.addEventListener('click', () => this.confirmAction('clear'));
         document.getElementById('load-config-history-btn')?.addEventListener('click', () => this.loadConfigHistory());
 
         // Update config preview when values change
