@@ -1766,14 +1766,34 @@ class DriverApp {
             monthlySalary: parseFloat(document.getElementById('config-monthly-salary').value),
             overtimeRate: parseFloat(document.getElementById('config-overtime-rate').value),
             fuelAllowance: parseFloat(document.getElementById('config-fuel-allowance').value),
-            workingHours: parseFloat(document.getElementById('config-working-hours').value)
+            workingHours: parseFloat(document.getElementById('config-working-hours').value),
+            notes: `Configuration updated from admin panel`
         };
 
-        // For now, just show success message and update local storage
-        // In a full implementation, this would save to database
-        localStorage.setItem('payrollConfig', JSON.stringify(configData));
-        this.showMessage('Payroll configuration saved successfully', 'success');
-        this.updateConfigPreview();
+        try {
+            const response = await fetch('/api/admin/payroll-config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.token}`
+                },
+                body: JSON.stringify(configData)
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                this.showMessage('Payroll configuration saved successfully', 'success');
+                this.updateConfigPreview();
+                // Also save to localStorage as backup
+                localStorage.setItem('payrollConfig', JSON.stringify(configData));
+            } else {
+                this.showMessage(data.error || 'Failed to save payroll configuration', 'error');
+            }
+        } catch (error) {
+            this.showMessage('Error saving payroll configuration', 'error');
+            console.error('Error saving config:', error);
+        }
     }
 
     async handleGenerateTestData(e) {
