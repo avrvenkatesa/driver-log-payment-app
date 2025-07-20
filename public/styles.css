@@ -1161,8 +1161,7 @@ main {
 
 .payroll-section {
     background: #f8f9fa;
-```text
-padding: 15px;
+    padding: 15px;
     border-radius: 8px;
 }
 
@@ -1204,7 +1203,11 @@ padding: 15px;
     color: white;
     padding: 20px;
     border-radius: 8px;
-    text-align: center;margin: 0 0 10px 0;
+    text-align: center;
+}
+
+.analytics-card h4 {
+    margin: 0 0 10px 0;
     font-size: 0.9em;
     opacity: 0.9;
 }
