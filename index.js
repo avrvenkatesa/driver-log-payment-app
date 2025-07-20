@@ -394,7 +394,10 @@ app.post('/api/driver/leave-request', authenticateToken, async (req, res) => {
     const { leaveDate, reason, leaveType } = req.body;
     const driverId = req.user.driverId;
 
+    console.log('Leave request received:', { driverId, leaveDate, reason, leaveType });
+
     if (!leaveDate || !reason) {
+      console.log('Missing required fields:', { leaveDate: !!leaveDate, reason: !!reason });
       return res.status(400).json({ error: 'Leave date and reason are required' });
     }
 
@@ -411,17 +414,21 @@ app.post('/api/driver/leave-request', authenticateToken, async (req, res) => {
     });
 
     if (existingRequest) {
+      console.log('Duplicate leave request detected for date:', leaveDate);
       return res.status(400).json({ error: 'Leave request already exists for this date' });
     }
 
     const leaveId = await dbHelpers.submitLeaveRequest(driverId, leaveDate, reason, leaveType || 'annual');
+    console.log('Leave request created successfully with ID:', leaveId);
+    
     res.json({ 
       success: true, 
       message: 'Leave request submitted successfully',
       leaveId 
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to submit leave request' });
+    console.error('Leave request submission error:', error);
+    res.status(500).json({ error: 'Failed to submit leave request', details: error.message });
   }
 });
 

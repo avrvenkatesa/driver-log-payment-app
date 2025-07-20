@@ -724,6 +724,14 @@ class DriverApp {
         const reason = document.getElementById('leave-reason').value;
         const leaveType = document.getElementById('leave-type').value;
 
+        // Validate inputs
+        if (!leaveDate || !reason.trim()) {
+            this.showMessage('Please fill in all required fields', 'error');
+            return;
+        }
+
+        console.log('Submitting leave request:', { leaveDate, reason, leaveType });
+
         try {
             const response = await fetch('/api/driver/leave-request', {
                 method: 'POST',
@@ -734,16 +742,22 @@ class DriverApp {
                 body: JSON.stringify({ leaveDate, reason, leaveType })
             });
 
+            console.log('Leave request response status:', response.status);
+            
             const data = await response.json();
+            console.log('Leave request response data:', data);
 
             if (response.ok) {
                 this.showMessage(this.translator.t('leaveRequestSubmitted'), 'success');
                 document.getElementById('action-forms').innerHTML = '';
             } else {
-                this.showMessage(this.translateError(data.error) || this.translator.t('failedToSubmitLeave'), 'error');
+                const errorMessage = this.translateError(data.error) || this.translator.t('failedToSubmitLeave');
+                console.error('Leave request failed:', errorMessage, data);
+                this.showMessage(errorMessage, 'error');
             }
         } catch (error) {
-            this.showMessage(this.translator.t('errorSubmittingLeave'), 'error');
+            console.error('Leave request error:', error);
+            this.showMessage(this.translator.t('errorSubmittingLeave') + ': ' + error.message, 'error');
         }
     }
 
