@@ -1319,7 +1319,7 @@ class DriverApp {
                     </tr>
                 </thead>
                 <tbody>
-                    ${payrollSummaries.map(item => {
+                    ${payrollSummaries.map((item, index) => {
                         const driver = item.driver;
                         const payroll = item.payroll;
                         return `
@@ -1330,10 +1330,22 @@ class DriverApp {
                                 <td>${payroll.regularHours}h</td>
                                 <td>${payroll.overtimeHours}h</td>
                                 <td>₹${payroll.baseSalary.toLocaleString()}</td>
-                                <td>₹${payroll.overtimePay.toLocaleString()}</td>
+                                <td>
+                                    ₹${payroll.overtimePay.toLocaleString()}
+                                    ${payroll.overtimePay > 0 ? `<button id="admin-show-overtime-details-btn-${index}" class="btn-small" style="margin-left: 10px;">Show Details</button>` : ''}
+                                </td>
                                 <td>₹${payroll.fuelAllowance.toLocaleString()}</td>
                                 <td><strong>₹${payroll.grossPay.toLocaleString()}</strong></td>
                             </tr>
+                            ${payroll.overtimePay > 0 ? `
+                            <tr id="admin-overtime-details-row-${index}" style="display: none;">
+                                <td colspan="9">
+                                    <div id="admin-overtime-details-${index}" style="padding: 10px; background: #f5f5f5; border-radius: 5px;">
+                                        <!-- Overtime details will be populated here -->
+                                    </div>
+                                </td>
+                            </tr>
+                            ` : ''}
                         `;
                     }).join('')}
                     <tr class="totals-row">
@@ -1352,6 +1364,178 @@ class DriverApp {
         `;
 
         document.getElementById('payroll-summary-display').innerHTML = tableHtml;
+
+        // Set up overtime details button event listeners for each driver
+        payrollSummaries.forEach((item, index) => {
+            const payroll = item.payroll;
+            if (payroll.overtimePay > 0) {
+                const overtimeDetailsBtn = document.getElementById(`admin-show-overtime-details-btn-${index}`);
+                if (overtimeDetailsBtn) {
+                    overtimeDetailsBtn.addEventListener('click', () => this.toggleAdminOvertimeDetails(payroll, index));
+                }
+            }
+        });
+    }
+
+    toggleAdminOvertimeDetails(payroll, index) {
+        const detailsRow = document.getElementById(`admin-overtime-details-row-${index}`);
+        const button = document.getElementById(`admin-show-overtime-details-btn-${index}`);
+        
+        if (detailsRow.style.display === 'none') {
+            // Show details
+            this.displayAdminOvertimeDetails(payroll, index);
+            detailsRow.style.display = 'table-row';
+            button.textContent = 'Hide Details';
+        } else {
+            // Hide details
+            detailsRow.style.display = 'none';
+            button.textContent = 'Show Details';
+        }
+    }
+
+    displayAdminOvertimeDetails(payroll, index) {
+        const detailsDiv = document.getElementById(`admin-overtime-details-${index}`);
+        
+        if (!payroll.shiftsDetails || payroll.shiftsDetails.length === 0) {
+            detailsDiv.innerHTML = '<p>No overtime details available.</p>';
+            return;
+        }
+
+        // Group shifts by date and calculate overtime for each
+        const overtimeByDate = {};
+        const OVERTIME_RATE = 100; // ₹100 per hour
+
+        payroll.shiftsDetails.forEach(shift => {
+            const shiftDate = shift.clock_in_time.split(' ')[0]; // Get date part
+            const clockInTime = new Date(shift.clock_in_time);
+            const clockOutTime = new Date(shift.clock_out_time);
+            
+            if (!clockOutTime || !shift.shift_duration_minutes) return;
+
+            const shiftDuration = shift.shift_duration_minutes;
+            let overtimeMinutes = 0;
+            let overtimeReason = [];
+
+            // Check if it's Sunday (overtime)
+            const dayOfWeek = clockInTime.getDay();
+            if (dayOfWeek === 0) {
+                overtimeMinutes += shiftDuration;
+                overtimeReason.push('Sunday work');
+            } else {
+                // Check for early morning overtime (before 8 AM)
+                const startHour = clockInTime.getHours();
+                if (startHour < 8) {
+                    const earlyMinutes = (8 - startHour) * 60 - clockInTime.getMinutes();
+                    const earlyOT = Math.min(earlyMinutes, shiftDuration);
+                    if (earlyOT > 0) {
+                        overtimeMinutes += earlyOT;
+                        overtimeReason.push(`Early start (before 8 AM): ${Math.round(earlyOT / 60 * 10) / 10}h`);
+                    }
+                }
+
+                // Check for late evening overtime (after 8 PM)
+                const endHour = clockOutTime.getHours();
+                if (endHour >= 20 || (endHour === 19 && clockOutTime.getMinutes() > 0)) {
+                    const lateStart = new Date(clockOutTime);
+                    lateStart.setHours(20, 0, 0, 0);
+                    if (clockOutTime > lateStart) {
+                        const lateMinutes = (clockOutTime - lateStart) / (1000 * 60);
+                        overtimeMinutes += lateMinutes;
+                        overtimeReason.push(`Late work (after 8 PM): ${Math.round(lateMinutes / 60 * 10) / 10}h`);
+                    }
+                }
+            }
+
+            if (overtimeMinutes > 0) {
+                if (!overtimeByDate[shiftDate]) {
+                    overtimeByDate[shiftDate] = {
+                        totalOvertimeMinutes: 0,
+                        shifts: []
+                    };
+                }
+                
+                const overtimeHours = overtimeMinutes / 60;
+                const overtimePay = overtimeHours * OVERTIME_RATE;
+                
+                overtimeByDate[shiftDate].totalOvertimeMinutes += overtimeMinutes;
+                overtimeByDate[shiftDate].shifts.push({
+                    shiftId: shift.id,
+                    startTime: this.formatToIST(shift.clock_in_time),
+                    endTime: this.formatToIST(shift.clock_out_time),
+                    overtimeMinutes: Math.round(overtimeMinutes),
+                    overtimeHours: Math.round(overtimeHours * 100) / 100,
+                    overtimePay: Math.round(overtimePay * 100) / 100,
+                    reason: overtimeReason.join(', ')
+                });
+            }
+        });
+
+        // Generate HTML for overtime details
+        const sortedDates = Object.keys(overtimeByDate).sort();
+        
+        if (sortedDates.length === 0) {
+            detailsDiv.innerHTML = '<p>No overtime work found for this period.</p>';
+            return;
+        }
+
+        let detailsHTML = '<h5>Overtime Work Details:</h5>';
+        let totalOvertimePay = 0;
+        let allShifts = [];
+
+        // Collect all shifts from all dates
+        sortedDates.forEach(date => {
+            const dayData = overtimeByDate[date];
+            dayData.shifts.forEach(shift => {
+                allShifts.push({
+                    date: date,
+                    ...shift
+                });
+            });
+        });
+
+        // Calculate total overtime pay
+        allShifts.forEach(shift => {
+            totalOvertimePay += shift.overtimePay;
+        });
+
+        detailsHTML += `
+            <table class="data-table" style="margin-top: 10px; font-size: 0.9em;">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Shift #</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>OT Hours</th>
+                        <th>OT Pay</th>
+                        <th>Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${allShifts.map(shift => `
+                        <tr>
+                            <td>${shift.date}</td>
+                            <td>#${shift.shiftId}</td>
+                            <td>${shift.startTime}</td>
+                            <td>${shift.endTime}</td>
+                            <td>${shift.overtimeHours}h</td>
+                            <td>₹${shift.overtimePay.toLocaleString()}</td>
+                            <td>${shift.reason}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+                <tfoot>
+                    <tr style="background: #f8f9fa; font-weight: bold;">
+                        <td colspan="4"><strong>Total Overtime</strong></td>
+                        <td><strong>${Math.round(allShifts.reduce((sum, shift) => sum + shift.overtimeHours, 0) * 100) / 100}h</strong></td>
+                        <td><strong>₹${Math.round(totalOvertimePay).toLocaleString()}</strong></td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        `;
+
+        detailsDiv.innerHTML = detailsHTML;
     }
 
     async loadReports() {
