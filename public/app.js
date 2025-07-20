@@ -757,38 +757,59 @@ class DriverApp {
 
         let detailsHTML = '<h5>Overtime Work Details:</h5>';
         let totalOvertimePay = 0;
+        let allShifts = [];
 
+        // Collect all shifts from all dates
         sortedDates.forEach(date => {
             const dayData = overtimeByDate[date];
-            const dayOvertimeHours = Math.round(dayData.totalOvertimeMinutes / 60 * 100) / 100;
-            const dayOvertimePay = dayOvertimeHours * OVERTIME_RATE;
-            totalOvertimePay += dayOvertimePay;
-
-            detailsHTML += `
-                <div style="margin-bottom: 15px; padding: 8px; background: white; border-radius: 3px; border-left: 3px solid #007bff;">
-                    <strong>${date}</strong> - ${dayOvertimeHours}h overtime (₹${Math.round(dayOvertimePay).toLocaleString()})
-                    <div style="margin-top: 5px; font-size: 0.9em;">
-            `;
-
             dayData.shifts.forEach(shift => {
-                detailsHTML += `
-                    <div style="margin-left: 10px; margin-bottom: 3px;">
-                        • Shift #${shift.shiftId}: ${shift.startTime} - ${shift.endTime}<br>
-                        &nbsp;&nbsp;Overtime: ${shift.overtimeHours}h (₹${shift.overtimePay.toLocaleString()}) - ${shift.reason}
-                    </div>
-                `;
+                allShifts.push({
+                    date: date,
+                    ...shift
+                });
             });
+        });
 
-            detailsHTML += `
-                    </div>
-                </div>
-            `;
+        // Calculate total overtime pay
+        allShifts.forEach(shift => {
+            totalOvertimePay += shift.overtimePay;
         });
 
         detailsHTML += `
-            <div style="margin-top: 10px; padding: 8px; background: #e9ecef; border-radius: 3px; font-weight: bold;">
-                Total Overtime Pay: ₹${Math.round(totalOvertimePay).toLocaleString()}
-            </div>
+            <table class="data-table" style="margin-top: 10px; font-size: 0.9em;">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Shift #</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>OT Hours</th>
+                        <th>OT Pay</th>
+                        <th>Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${allShifts.map(shift => `
+                        <tr>
+                            <td>${shift.date}</td>
+                            <td>#${shift.shiftId}</td>
+                            <td>${shift.startTime}</td>
+                            <td>${shift.endTime}</td>
+                            <td>${shift.overtimeHours}h</td>
+                            <td>₹${shift.overtimePay.toLocaleString()}</td>
+                            <td>${shift.reason}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+                <tfoot>
+                    <tr style="background: #f8f9fa; font-weight: bold;">
+                        <td colspan="4"><strong>Total Overtime</strong></td>
+                        <td><strong>${Math.round(allShifts.reduce((sum, shift) => sum + shift.overtimeHours, 0) * 100) / 100}h</strong></td>
+                        <td><strong>₹${Math.round(totalOvertimePay).toLocaleString()}</strong></td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
         `;
 
         detailsDiv.innerHTML = detailsHTML;
