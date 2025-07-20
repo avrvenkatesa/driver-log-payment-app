@@ -205,8 +205,8 @@ class DriverApp {
                 <button id="view-shifts-btn" class="action-btn">${this.translator.t('viewTodaysShifts')}</button>
                 <button id="view-monthly-shifts-btn" class="action-btn">${this.translator.t('viewMonthlyShifts')}</button>
                 <button id="view-payroll-btn" class="action-btn">${this.translator.t('viewPayroll')}</button>
-                <button id="request-leave-btn" class="action-btn">Request Leave</button>
-                <button id="view-leave-requests-btn" class="action-btn">View Leave Requests</button>
+                <button id="request-leave-btn" class="action-btn">${this.translator.t('requestLeave')}</button>
+                <button id="view-leave-requests-btn" class="action-btn">${this.translator.t('viewLeaveRequests')}</button>
             </div>
 
             <div id="action-forms" class="forms-container"></div>
@@ -692,26 +692,26 @@ class DriverApp {
     showLeaveRequestForm() {
         document.getElementById('action-forms').innerHTML = `
             <div class="form-card">
-                <h3>Request Leave</h3>
+                <h3>${this.translator.t('requestLeave')}</h3>
                 <form id="leave-request-form">
                     <div class="form-group">
-                        <label for="leave-date">Leave Date:</label>
+                        <label for="leave-date">${this.translator.t('leaveDate')}:</label>
                         <input type="date" id="leave-date" required min="${new Date().toISOString().split('T')[0]}">
                     </div>
                     <div class="form-group">
-                        <label for="leave-reason">Reason:</label>
-                        <textarea id="leave-reason" required placeholder="Enter reason for leave" rows="3"></textarea>
+                        <label for="leave-reason">${this.translator.t('reason')}:</label>
+                        <textarea id="leave-reason" required placeholder="${this.translator.t('enterReasonForLeave')}" rows="3"></textarea>
                     </div>
                     <div class="form-group">
-                        <label for="leave-type">Leave Type:</label>
+                        <label for="leave-type">${this.translator.t('leaveType')}:</label>
                         <select id="leave-type">
-                            <option value="annual">Annual Leave</option>
-                            <option value="sick">Sick Leave</option>
-                            <option value="emergency">Emergency Leave</option>
+                            <option value="annual">${this.translator.t('annualLeave')}</option>
+                            <option value="sick">${this.translator.t('sickLeave')}</option>
+                            <option value="emergency">${this.translator.t('emergencyLeave')}</option>
                         </select>
                     </div>
-                    <button type="submit" class="action-btn">Submit Request</button>
-                    <button type="button" class="cancel-btn" onclick="this.parentElement.parentElement.remove()">Cancel</button>
+                    <button type="submit" class="action-btn">${this.translator.t('submitRequest')}</button>
+                    <button type="button" class="cancel-btn" onclick="this.parentElement.parentElement.remove()">${this.translator.t('cancel')}</button>
                 </form>
             </div>
         `;
@@ -737,13 +737,13 @@ class DriverApp {
             const data = await response.json();
 
             if (response.ok) {
-                this.showMessage('Leave request submitted successfully', 'success');
+                this.showMessage(this.translator.t('leaveRequestSubmitted'), 'success');
                 document.getElementById('action-forms').innerHTML = '';
             } else {
-                this.showMessage(data.error || 'Failed to submit leave request', 'error');
+                this.showMessage(this.translateError(data.error) || this.translator.t('failedToSubmitLeave'), 'error');
             }
         } catch (error) {
-            this.showMessage('Error submitting leave request', 'error');
+            this.showMessage(this.translator.t('errorSubmittingLeave'), 'error');
         }
     }
 
@@ -760,23 +760,23 @@ class DriverApp {
             if (data.leaveRequests.length > 0) {
                 shiftsDiv.innerHTML = `
                     <div class="shifts-card">
-                        <h3>Leave Requests - ${currentYear}</h3>
+                        <h3>${this.translator.t('leaveRequests')} - ${currentYear}</h3>
                         <div class="leave-summary">
-                            <p><strong>Annual Leaves Used:</strong> ${data.annualLeaveCount} / 12</p>
-                            <p><strong>Remaining Leaves:</strong> ${data.remainingLeaves}</p>
+                            <p><strong>${this.translator.t('annualLeavesUsed')}:</strong> ${data.annualLeaveCount} / 12</p>
+                            <p><strong>${this.translator.t('remainingLeaves')}:</strong> ${data.remainingLeaves}</p>
                         </div>
                         <hr style="margin: 15px 0;">
                         ${data.leaveRequests.map(leave => `
                             <div class="leave-item">
-                                <p><strong>Leave #${leave.id}</strong></p>
-                                <p><strong>Date:</strong> ${leave.leave_date}</p>
-                                <p><strong>Type:</strong> ${leave.leave_type}</p>
-                                <p><strong>Reason:</strong> ${leave.reason}</p>
-                                <p><strong>Status:</strong> <span class="status-badge ${leave.status}">${leave.status}</span></p>
-                                <p><strong>Requested:</strong> ${this.formatToIST(leave.requested_at)}</p>
-                                ${leave.approved_at ? `<p><strong>Processed:</strong> ${this.formatToIST(leave.approved_at)}</p>` : ''}
-                                ${leave.approved_by ? `<p><strong>Processed By:</strong> ${leave.approved_by}</p>` : ''}
-                                ${leave.notes ? `<p><strong>Notes:</strong> ${leave.notes}</p>` : ''}
+                                <p><strong>${this.translator.t('shift')} #${leave.id}</strong></p>
+                                <p><strong>${this.translator.t('date')}:</strong> ${leave.leave_date}</p>
+                                <p><strong>${this.translator.t('type')}:</strong> ${leave.leave_type}</p>
+                                <p><strong>${this.translator.t('reason')}:</strong> ${leave.reason}</p>
+                                <p><strong>${this.translator.t('status')}:</strong> <span class="status-badge ${leave.status}">${leave.status}</span></p>
+                                <p><strong>${this.translator.t('requested')}:</strong> ${this.formatToIST(leave.requested_at)}</p>
+                                ${leave.approved_at ? `<p><strong>${this.translator.t('processed')}:</strong> ${this.formatToIST(leave.approved_at)}</p>` : ''}
+                                ${leave.approved_by ? `<p><strong>${this.translator.t('processedBy')}:</strong> ${leave.approved_by}</p>` : ''}
+                                ${leave.notes ? `<p><strong>${this.translator.t('notes')}:</strong> ${leave.notes}</p>` : ''}
                             </div>
                         `).join('')}
                     </div>
@@ -784,17 +784,17 @@ class DriverApp {
             } else {
                 shiftsDiv.innerHTML = `
                     <div class="shifts-card">
-                        <h3>Leave Requests - ${currentYear}</h3>
+                        <h3>${this.translator.t('leaveRequests')} - ${currentYear}</h3>
                         <div class="leave-summary">
-                            <p><strong>Annual Leaves Used:</strong> ${data.annualLeaveCount} / 12</p>
-                            <p><strong>Remaining Leaves:</strong> ${data.remainingLeaves}</p>
+                            <p><strong>${this.translator.t('annualLeavesUsed')}:</strong> ${data.annualLeaveCount} / 12</p>
+                            <p><strong>${this.translator.t('remainingLeaves')}:</strong> ${data.remainingLeaves}</p>
                         </div>
-                        <p>No leave requests found for this year.</p>
+                        <p>${this.translator.t('noLeaveRequestsFound')}</p>
                     </div>
                 `;
             }
         } catch (error) {
-            this.showMessage('Failed to load leave requests', 'error');
+            this.showMessage(this.translator.t('failedToLoadLeaveRequests'), 'error');
         }
     }
 
@@ -1029,6 +1029,11 @@ class DriverApp {
                               .replace('{endOdometer}', errorResponse.data.endOdometer);
             }
 
+            // Handle leave request specific errors
+            if (errorResponse.error === 'Leave request already exists for this date') {
+                return this.translator.t('leaveRequestAlreadyExists');
+            }
+
             return errorMsg;
         }
 
@@ -1052,7 +1057,7 @@ class DriverApp {
                     <button id="drivers-tab" class="admin-tab-btn active">${this.translator.t('drivers')}</button>
                     <button id="shifts-tab" class="admin-tab-btn">${this.translator.t('shifts')}</button>
                     <button id="payroll-tab" class="admin-tab-btn">${this.translator.t('payrollSummary')}</button>
-                    <button id="leave-tab" class="admin-tab-btn">Leave Management</button>
+                    <button id="leave-tab" class="admin-tab-btn">${this.translator.t('leaveRequests')}</button>
                     <button id="reports-tab" class="admin-tab-btn">${this.translator.t('reports')}</button>
                     <button id="settings-tab" class="admin-tab-btn">${this.translator.t('settings')}</button>
                 </div>
@@ -2229,22 +2234,22 @@ class DriverApp {
         content.innerHTML = `
             <div class="admin-section-content">
                 <div class="section-header">
-                    <h3>Leave Management</h3>
+                    <h3>${this.translator.t('leaveRequests')}</h3>
                     <div class="filter-controls">
                         <select id="leave-status-filter">
-                            <option value="">All Requests</option>
-                            <option value="pending">Pending</option>
-                            <option value="approved">Approved</option>
-                            <option value="rejected">Rejected</option>
+                            <option value="">${this.translator.t('view')} ${this.translator.t('leaveRequests')}</option>
+                            <option value="pending">${this.translator.t('status')}: Pending</option>
+                            <option value="approved">${this.translator.t('status')}: Approved</option>
+                            <option value="rejected">${this.translator.t('status')}: Rejected</option>
                         </select>
                         <button id="refresh-leave-btn" class="action-btn secondary">
-                            Refresh
+                            ${this.translator.t('refresh')}
                         </button>
                     </div>
                 </div>
 
                 <div id="leave-requests-list" class="data-table-container">
-                    <div class="loading">Loading...</div>
+                    <div class="loading">${this.translator.t('loading')}...</div>
                 </div>
             </div>
         `;
