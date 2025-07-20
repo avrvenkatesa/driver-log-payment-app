@@ -508,6 +508,7 @@ async function startServer() {
       console.log(`📱 Frontend: http://0.0.0.0:${PORT}`);
       console.log(`🔌 API: http://0.0.0.0:${PORT}/api/health`);
       console.log(`💾 Database: SQLite initialized successfully`);
+      console.log(`🌐 Server accessible at: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
