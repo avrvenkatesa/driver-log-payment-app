@@ -332,6 +332,47 @@ app.get('/api/admin/payroll/:year/:month', authenticateToken, async (req, res) =
   }
 });
 
+// YTD payroll summary
+app.get('/api/admin/payroll/ytd/:year', authenticateToken, async (req, res) => {
+  try {
+    const { year } = req.params;
+    const payrollSummary = await dbHelpers.getYTDPayrollSummary(year);
+    res.json({ payrollSummary });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to generate YTD payroll summary' });
+  }
+});
+
+// Export monthly payroll to PDF
+app.get('/api/admin/payroll/:year/:month/export', authenticateToken, async (req, res) => {
+  try {
+    const { year, month } = req.params;
+    const payrollSummary = await dbHelpers.getPayrollSummary(year, month);
+    const pdfBuffer = await dbHelpers.generatePayrollPDF(payrollSummary, month, year, 'monthly');
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=Payroll_${getMonthName(parseInt(month))}_${year}.pdf`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to export payroll PDF' });
+  }
+});
+
+// Export YTD payroll to PDF
+app.get('/api/admin/payroll/ytd/:year/export', authenticateToken, async (req, res) => {
+  try {
+    const { year } = req.params;
+    const payrollSummary = await dbHelpers.getYTDPayrollSummary(year);
+    const pdfBuffer = await dbHelpers.generatePayrollPDF(payrollSummary, null, year, 'ytd');
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=YTD_Payroll_${year}.pdf`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to export YTD payroll PDF' });
+  }
+});
+
 app.get('/api/admin/payroll/driver/:driverId/:year/:month', authenticateToken, async (req, res) => {
   try {
     const { driverId, year, month } = req.params;
@@ -592,6 +633,15 @@ app.get('/', (req, res) => {
 app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
+
+// Helper function to get month name
+function getMonthName(month) {
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  return months[month - 1];
+}
 
 // Initialize database and start server
 async function startServer() {

@@ -1496,6 +1496,10 @@ class DriverApp {
                 <div class="section-header">
                     <h3>${this.translator.t('payrollSummary')}</h3>
                     <div class="filter-controls">
+                        <select id="payroll-view-type">
+                            <option value="monthly">Monthly View</option>
+                            <option value="ytd">Year-to-Date (YTD)</option>
+                        </select>
                         <select id="payroll-month">
                             <option value="1">January</option>
                             <option value="2">February</option>
@@ -1516,7 +1520,10 @@ class DriverApp {
                             <option value="2026">2026</option>
                         </select>
                         <button id="load-payroll-btn" class="action-btn secondary">
-                            ${this.translator.t('loadPayroll')}
+                            Load Payroll
+                        </button>
+                        <button id="export-pdf-btn" class="action-btn success" style="display: none;">
+                            Export to PDF
                         </button>
                     </div>
                 </div>
@@ -1527,24 +1534,54 @@ class DriverApp {
             </div>
         `;
 
-        // Set up event listener
+        // Set up event listeners
+        document.getElementById('payroll-view-type')?.addEventListener('change', () => this.togglePayrollViewControls());
         document.getElementById('load-payroll-btn')?.addEventListener('click', () => this.loadPayrollData());
+        document.getElementById('export-pdf-btn')?.addEventListener('click', () => this.exportPayrollToPDF());
+        
+        this.togglePayrollViewControls();
+    }
+
+    togglePayrollViewControls() {
+        const viewType = document.getElementById('payroll-view-type').value;
+        const monthSelect = document.getElementById('payroll-month');
+        
+        if (viewType === 'ytd') {
+            monthSelect.style.display = 'none';
+        } else {
+            monthSelect.style.display = 'inline-block';
+        }
     }
 
     async loadPayrollData() {
         try {
+            const viewType = document.getElementById('payroll-view-type').value;
             const month = document.getElementById('payroll-month').value;
             const year = document.getElementById('payroll-year').value;
 
-            const response = await fetch(`/api/admin/payroll/${year}/${month}`, {
-                headers: {
-                    'Authorization': `Bearer ${this.token}`
-                }
-            });
+            let response;
+            if (viewType === 'ytd') {
+                response = await fetch(`/api/admin/payroll/ytd/${year}`, {
+                    headers: {
+                        'Authorization': `Bearer ${this.token}`
+                    }
+                });
+            } else {
+                response = await fetch(`/api/admin/payroll/${year}/${month}`, {
+                    headers: {
+                        'Authorization': `Bearer ${this.token}`
+                    }
+                });
+            }
 
             if (response.ok) {
                 const data = await response.json();
-                this.displayPayrollSummary(data.payrollSummary, month, year);
+                if (viewType === 'ytd') {
+                    this.displayYTDPayrollSummary(data.payrollSummary, year);
+                } else {
+                    this.displayPayrollSummary(data.payrollSummary, month, year);
+                }
+                document.getElementById('export-pdf-btn').style.display = 'inline-block';
             } else {
                 document.getElementById('payroll-summary-display').innerHTML = 
                     `<div class="error">${this.translator.t('failedToLoadPayroll')}</div>`;
@@ -1701,6 +1738,175 @@ class DriverApp {
                 }
             }
         });
+    }
+
+    displayYTDPayrollSummary(payrollSummaries, year) {
+        if (payrollSummaries.length === 0) {
+            document.getElementById('payroll-summary-display').innerHTML = 
+                `<div class="no-data">No YTD payroll data available for ${year}</div>`;
+            return;
+        }
+
+        // Calculate YTD totals
+        const totals = payrollSummaries.reduce((acc, item) => {
+            const payroll = item.payroll;
+            acc.totalDrivers = Math.max(acc.totalDrivers, 1);
+            acc.totalShifts += payroll.shifts;
+            acc.totalDistance += payroll.totalDistance;
+            acc.totalRegularHours += payroll.regularHours;
+            acc.totalOvertimeHours += payroll.overtimeHours;
+            acc.totalBaseSalary += payroll.baseSalary;
+            acc.totalOvertimePay += payroll.overtimePay;
+            acc.totalFuelAllowance += payroll.fuelAllowance;
+            acc.totalGrossPay += payroll.grossPay;
+            acc.totalDaysWorked += payroll.daysWorked;
+            return acc;
+        }, {
+            totalDrivers: 0,
+            totalShifts: 0,
+            totalDistance: 0,
+            totalRegularHours: 0,
+            totalOvertimeHours: 0,
+            totalBaseSalary: 0,
+            totalOvertimePay: 0,
+            totalFuelAllowance: 0,
+            totalGrossPay: 0,
+            totalDaysWorked: 0
+        });
+
+        const tableHtml = `
+            <div class="payroll-overview">
+                <h4>Year-to-Date Payroll Summary - ${year}</h4>
+                <div class="analytics-cards">
+                    <div class="analytics-card">
+                        <h4>Active Drivers</h4>
+                        <div class="stat-value">${payrollSummaries.length}</div>
+                    </div>
+                    <div class="analytics-card">
+                        <h4>Total Shifts</h4>
+                        <div class="stat-value">${totals.totalShifts}</div>
+                    </div>
+                    <div class="analytics-card">
+                        <h4>Total Distance</h4>
+                        <div class="stat-value">${totals.totalDistance} km</div>
+                    </div>
+                    <div class="analytics-card">
+                        <h4>Total YTD Payroll</h4>
+                        <div class="stat-value">₹${totals.totalGrossPay.toLocaleString()}</div>
+                    </div>
+                    <div class="analytics-card">
+                        <h4>Total Days Worked</h4>
+                        <div class="stat-value">${totals.totalDaysWorked}</div>
+                    </div>
+                    <div class="analytics-card">
+                        <h4>Total Overtime Hours</h4>
+                        <div class="stat-value">${Math.round(totals.totalOvertimeHours * 10) / 10}h</div>
+                    </div>
+                </div>
+            </div>
+
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Driver</th>
+                        <th>YTD Shifts</th>
+                        <th>YTD Days</th>
+                        <th>YTD Distance</th>
+                        <th>YTD Regular Hours</th>
+                        <th>YTD Overtime Hours</th>
+                        <th>YTD Base Salary</th>
+                        <th>YTD Overtime Pay</th>
+                        <th>YTD Fuel Allowance</th>
+                        <th>YTD Gross Pay</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${payrollSummaries.map(item => {
+                        const driver = item.driver;
+                        const payroll = item.payroll;
+                        return `
+                            <tr>
+                                <td><strong>${driver.name}</strong><br><small>${driver.phone}</small></td>
+                                <td>${payroll.shifts}</td>
+                                <td>${payroll.daysWorked}</td>
+                                <td>${payroll.totalDistance} km</td>
+                                <td>${payroll.regularHours}h</td>
+                                <td>${payroll.overtimeHours}h</td>
+                                <td>₹${payroll.baseSalary.toLocaleString()}</td>
+                                <td>₹${payroll.overtimePay.toLocaleString()}</td>
+                                <td>₹${payroll.fuelAllowance.toLocaleString()}</td>
+                                <td><strong>₹${payroll.grossPay.toLocaleString()}</strong></td>
+                            </tr>
+                        `;
+                    }).join('')}
+                    <tr class="totals-row">
+                        <td><strong>TOTALS</strong></td>
+                        <td><strong>${totals.totalShifts}</strong></td>
+                        <td><strong>${totals.totalDaysWorked}</strong></td>
+                        <td><strong>${totals.totalDistance} km</strong></td>
+                        <td><strong>${Math.round(totals.totalRegularHours * 10) / 10}h</strong></td>
+                        <td><strong>${Math.round(totals.totalOvertimeHours * 10) / 10}h</strong></td>
+                        <td><strong>₹${totals.totalBaseSalary.toLocaleString()}</strong></td>
+                        <td><strong>₹${Math.round(totals.totalOvertimePay).toLocaleString()}</strong></td>
+                        <td><strong>₹${Math.round(totals.totalFuelAllowance).toLocaleString()}</strong></td>
+                        <td><strong>₹${Math.round(totals.totalGrossPay).toLocaleString()}</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        `;
+
+        document.getElementById('payroll-summary-display').innerHTML = tableHtml;
+    }
+
+    async exportPayrollToPDF() {
+        const viewType = document.getElementById('payroll-view-type').value;
+        const month = document.getElementById('payroll-month').value;
+        const year = document.getElementById('payroll-year').value;
+        
+        const exportBtn = document.getElementById('export-pdf-btn');
+        const originalText = exportBtn.textContent;
+        exportBtn.textContent = 'Generating PDF...';
+        exportBtn.disabled = true;
+
+        try {
+            let url;
+            let filename;
+            
+            if (viewType === 'ytd') {
+                url = `/api/admin/payroll/ytd/${year}/export`;
+                filename = `YTD_Payroll_${year}.pdf`;
+            } else {
+                url = `/api/admin/payroll/${year}/${month}/export`;
+                filename = `Payroll_${this.getMonthName(parseInt(month))}_${year}.pdf`;
+            }
+
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(downloadUrl);
+                document.body.removeChild(a);
+                
+                this.showMessage('PDF export completed successfully', 'success');
+            } else {
+                this.showMessage('Failed to export PDF', 'error');
+            }
+        } catch (error) {
+            this.showMessage('Error exporting PDF', 'error');
+        } finally {
+            exportBtn.textContent = originalText;
+            exportBtn.disabled = false;
+        }
     }
 
     toggleAdminOvertimeDetails(payroll, index) {

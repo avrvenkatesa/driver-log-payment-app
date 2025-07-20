@@ -667,6 +667,90 @@ const dbHelpers = {
     });
   },
 
+  // Get YTD payroll summary for all drivers
+  getYTDPayrollSummary: async (year) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const drivers = await dbHelpers.getAllDrivers();
+        const payrollSummaries = [];
+
+        for (const driver of drivers) {
+          if (driver.is_active) {
+            // Calculate YTD payroll by aggregating all months
+            let ytdPayroll = {
+              driverId: driver.id,
+              year: parseInt(year),
+              shifts: 0,
+              daysWorked: 0,
+              totalDistance: 0,
+              regularHours: 0,
+              overtimeHours: 0,
+              baseSalary: 0,
+              adjustedBaseSalary: 0,
+              overtimePay: 0,
+              fuelAllowance: 0,
+              grossPay: 0,
+              totalLeaveDays: 0,
+              paidLeavesThisMonth: 0,
+              unpaidLeavesThisMonth: 0,
+              annualLeaveCount: 0,
+              unpaidLeaveDeduction: 0
+            };
+
+            // Get data for all months up to current month
+            const currentMonth = new Date().getMonth() + 1;
+            const targetMonth = new Date().getFullYear() == year ? currentMonth : 12;
+
+            for (let month = 1; month <= targetMonth; month++) {
+              const monthlyPayroll = await dbHelpers.calculateDriverPayroll(driver.id, year, month);
+              
+              ytdPayroll.shifts += monthlyPayroll.shifts;
+              ytdPayroll.daysWorked += monthlyPayroll.daysWorked;
+              ytdPayroll.totalDistance += monthlyPayroll.totalDistance;
+              ytdPayroll.regularHours += monthlyPayroll.regularHours;
+              ytdPayroll.overtimeHours += monthlyPayroll.overtimeHours;
+              ytdPayroll.baseSalary += monthlyPayroll.baseSalary;
+              ytdPayroll.adjustedBaseSalary += monthlyPayroll.adjustedBaseSalary;
+              ytdPayroll.overtimePay += monthlyPayroll.overtimePay;
+              ytdPayroll.fuelAllowance += monthlyPayroll.fuelAllowance;
+              ytdPayroll.grossPay += monthlyPayroll.grossPay;
+              ytdPayroll.totalLeaveDays += monthlyPayroll.totalLeaveDays;
+              ytdPayroll.paidLeavesThisMonth += monthlyPayroll.paidLeavesThisMonth;
+              ytdPayroll.unpaidLeavesThisMonth += monthlyPayroll.unpaidLeavesThisMonth;
+              ytdPayroll.unpaidLeaveDeduction += monthlyPayroll.unpaidLeaveDeduction;
+            }
+
+            // Get annual leave count
+            ytdPayroll.annualLeaveCount = await dbHelpers.getAnnualLeaveCount(driver.id, year);
+
+            // Round all monetary values
+            ytdPayroll.regularHours = Math.round(ytdPayroll.regularHours * 100) / 100;
+            ytdPayroll.overtimeHours = Math.round(ytdPayroll.overtimeHours * 100) / 100;
+            ytdPayroll.baseSalary = Math.round(ytdPayroll.baseSalary * 100) / 100;
+            ytdPayroll.adjustedBaseSalary = Math.round(ytdPayroll.adjustedBaseSalary * 100) / 100;
+            ytdPayroll.overtimePay = Math.round(ytdPayroll.overtimePay * 100) / 100;
+            ytdPayroll.fuelAllowance = Math.round(ytdPayroll.fuelAllowance * 100) / 100;
+            ytdPayroll.grossPay = Math.round(ytdPayroll.grossPay * 100) / 100;
+            ytdPayroll.unpaidLeaveDeduction = Math.round(ytdPayroll.unpaidLeaveDeduction * 100) / 100;
+
+            payrollSummaries.push({
+              driver: {
+                id: driver.id,
+                name: driver.name,
+                phone: driver.phone
+              },
+              payroll: ytdPayroll
+            });
+          }
+        }
+
+        resolve(payrollSummaries);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  },
+
   // Create test data for July 2025
   createTestData: async (driverId) => {
     return new Promise((resolve, reject) => {
@@ -1202,7 +1286,190 @@ const dbHelpers = {
         }
       );
     });
+  },
+
+  // Generate PDF for payroll data
+  generatePayrollPDF: async (payrollSummaries, month, year, type) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const puppeteer = require('puppeteer');
+        
+        // Create a simple HTML content for PDF generation
+        const title = type === 'ytd' ? `Year-to-Date Payroll Summary - ${year}` : 
+                     `Payroll Summary - ${getMonthName(parseInt(month))} ${year}`;
+        
+        // Calculate totals
+        const totals = payrollSummaries.reduce((acc, item) => {
+          const payroll = item.payroll;
+          acc.totalShifts += payroll.shifts;
+          acc.totalDistance += payroll.totalDistance;
+          acc.totalRegularHours += payroll.regularHours;
+          acc.totalOvertimeHours += payroll.overtimeHours;
+          acc.totalBaseSalary += payroll.baseSalary;
+          acc.totalOvertimePay += payroll.overtimePay;
+          acc.totalFuelAllowance += payroll.fuelAllowance;
+          acc.totalGrossPay += payroll.grossPay;
+          acc.totalDaysWorked += payroll.daysWorked;
+          return acc;
+        }, {
+          totalShifts: 0,
+          totalDistance: 0,
+          totalRegularHours: 0,
+          totalOvertimeHours: 0,
+          totalBaseSalary: 0,
+          totalOvertimePay: 0,
+          totalFuelAllowance: 0,
+          totalGrossPay: 0,
+          totalDaysWorked: 0
+        });
+
+        const htmlContent = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <title>${title}</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 20px; font-size: 12px; }
+              .header { text-align: center; margin-bottom: 30px; }
+              .summary { background: #f5f5f5; padding: 15px; margin-bottom: 20px; border-radius: 8px; }
+              .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+              .summary-item { text-align: center; }
+              .summary-item h4 { margin: 0; color: #333; font-size: 14px; }
+              .summary-item .value { font-size: 16px; font-weight: bold; color: #2196f3; }
+              table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 10px; }
+              th, td { padding: 6px; text-align: left; border: 1px solid #ddd; }
+              th { background-color: #f5f5f5; font-weight: bold; }
+              .totals-row { background-color: #e3f2fd; font-weight: bold; }
+              .text-right { text-align: right; }
+              .footer { margin-top: 30px; text-align: center; color: #666; font-size: 10px; }
+              @media print { body { margin: 0; } }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>Driver Log & Payment System</h1>
+              <h2>${title}</h2>
+              <p>Generated on: ${new Date().toLocaleDateString('en-IN')} at ${new Date().toLocaleTimeString('en-IN')}</p>
+            </div>
+
+            <div class="summary">
+              <h3>Summary</h3>
+              <div class="summary-grid">
+                <div class="summary-item">
+                  <h4>Total Drivers</h4>
+                  <div class="value">${payrollSummaries.length}</div>
+                </div>
+                <div class="summary-item">
+                  <h4>Total Shifts</h4>
+                  <div class="value">${totals.totalShifts}</div>
+                </div>
+                <div class="summary-item">
+                  <h4>Total Distance</h4>
+                  <div class="value">${totals.totalDistance} km</div>
+                </div>
+                <div class="summary-item">
+                  <h4>Total Payroll</h4>
+                  <div class="value">₹${totals.totalGrossPay.toLocaleString()}</div>
+                </div>
+              </div>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Driver</th>
+                  <th>Shifts</th>
+                  <th>Days</th>
+                  <th>Distance (km)</th>
+                  <th>Regular Hours</th>
+                  <th>Overtime Hours</th>
+                  <th>Base Salary</th>
+                  <th>Overtime Pay</th>
+                  <th>Fuel Allowance</th>
+                  <th>Gross Pay</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${payrollSummaries.map(item => {
+                  const driver = item.driver;
+                  const payroll = item.payroll;
+                  return `
+                    <tr>
+                      <td>${driver.name}<br><small>${driver.phone}</small></td>
+                      <td class="text-right">${payroll.shifts}</td>
+                      <td class="text-right">${payroll.daysWorked}</td>
+                      <td class="text-right">${payroll.totalDistance}</td>
+                      <td class="text-right">${payroll.regularHours}h</td>
+                      <td class="text-right">${payroll.overtimeHours}h</td>
+                      <td class="text-right">₹${payroll.baseSalary.toLocaleString()}</td>
+                      <td class="text-right">₹${payroll.overtimePay.toLocaleString()}</td>
+                      <td class="text-right">₹${payroll.fuelAllowance.toLocaleString()}</td>
+                      <td class="text-right"><strong>₹${payroll.grossPay.toLocaleString()}</strong></td>
+                    </tr>
+                  `;
+                }).join('')}
+                <tr class="totals-row">
+                  <td><strong>TOTALS</strong></td>
+                  <td class="text-right"><strong>${totals.totalShifts}</strong></td>
+                  <td class="text-right"><strong>${totals.totalDaysWorked}</strong></td>
+                  <td class="text-right"><strong>${totals.totalDistance}</strong></td>
+                  <td class="text-right"><strong>${Math.round(totals.totalRegularHours * 10) / 10}h</strong></td>
+                  <td class="text-right"><strong>${Math.round(totals.totalOvertimeHours * 10) / 10}h</strong></td>
+                  <td class="text-right"><strong>₹${totals.totalBaseSalary.toLocaleString()}</strong></td>
+                  <td class="text-right"><strong>₹${Math.round(totals.totalOvertimePay).toLocaleString()}</strong></td>
+                  <td class="text-right"><strong>₹${Math.round(totals.totalFuelAllowance).toLocaleString()}</strong></td>
+                  <td class="text-right"><strong>₹${Math.round(totals.totalGrossPay).toLocaleString()}</strong></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="footer">
+              <p>This is a computer-generated report from the Driver Log & Payment System.</p>
+              <p>For any queries, please contact the system administrator.</p>
+            </div>
+          </body>
+          </html>
+        `;
+
+        // Generate PDF using puppeteer
+        const browser = await puppeteer.launch({
+          headless: true,
+          args: ['--no-sandbox', '--disable-setuid-sandbox']
+        });
+        
+        const page = await browser.newPage();
+        await page.setContent(htmlContent);
+        
+        const pdfBuffer = await page.pdf({
+          format: 'A4',
+          margin: {
+            top: '20px',
+            right: '20px',
+            bottom: '20px',
+            left: '20px'
+          },
+          printBackground: true
+        });
+        
+        await browser.close();
+        resolve(pdfBuffer);
+        
+      } catch (error) {
+        console.error('PDF generation error:', error);
+        reject(error);
+      }
+    });
   }
+
+// Helper function for month names
+function getMonthName(month) {
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  return months[month - 1];
+}
 };
 
 module.exports = {
