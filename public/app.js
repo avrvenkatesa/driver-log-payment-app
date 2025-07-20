@@ -83,10 +83,13 @@ class DriverApp {
         document.getElementById('view-shifts-btn')?.addEventListener('click', () => this.loadShifts());
         document.getElementById('view-monthly-shifts-btn')?.addEventListener('click', () => this.loadMonthlyShifts());
         document.getElementById('view-payroll-btn')?.addEventListener('click', () => this.loadDriverPayroll());
+        document.getElementById('request-leave-btn')?.addEventListener('click', () => this.showLeaveRequestForm());
+        document.getElementById('view-leave-requests-btn')?.addEventListener('click', () => this.loadLeaveRequests());
 
         // Form submissions
         document.getElementById('clock-in-form')?.addEventListener('submit', (e) => this.handleClockIn(e));
         document.getElementById('clock-out-form')?.addEventListener('submit', (e) => this.handleClockOut(e));
+        document.getElementById('leave-request-form')?.addEventListener('submit', (e) => this.handleLeaveRequest(e));
 
 
 
@@ -202,6 +205,8 @@ class DriverApp {
                 <button id="view-shifts-btn" class="action-btn">${this.translator.t('viewTodaysShifts')}</button>
                 <button id="view-monthly-shifts-btn" class="action-btn">${this.translator.t('viewMonthlyShifts')}</button>
                 <button id="view-payroll-btn" class="action-btn">${this.translator.t('viewPayroll')}</button>
+                <button id="request-leave-btn" class="action-btn">Request Leave</button>
+                <button id="view-leave-requests-btn" class="action-btn">View Leave Requests</button>
             </div>
 
             <div id="action-forms" class="forms-container"></div>
@@ -612,16 +617,30 @@ class DriverApp {
                                 <p>${this.translator.t('overtimeHours')}: ${payroll.overtimeHours}h</p>
                             </div>
 
+                            ${payroll.totalLeaveDays > 0 ? `
+                            <div class="payroll-section">
+                                <h4>Leave Summary:</h4>
+                                <p>Total Leave Days: ${payroll.totalLeaveDays}</p>
+                                <p>Paid Leaves: ${payroll.paidLeavesThisMonth}</p>
+                                <p>Unpaid Leaves: ${payroll.unpaidLeavesThisMonth}</p>
+                                <p>Annual Leaves Used: ${payroll.annualLeaveCount} / 12</p>
+                            </div>
+                            ` : ''}
+
                             <div class="payroll-section">
                                 <h4>${this.translator.t('paymentBreakdown')}:</h4>
-                                <p>${this.translator.t('baseSalary')}: ₹${payroll.baseSalary.toLocaleString()}</p>
+                                <p>Base Salary: ₹${payroll.baseSalary.toLocaleString()}</p>
+                                ${payroll.unpaidLeaveDeduction > 0 ? `
+                                    <p>Unpaid Leave Deduction: -₹${payroll.unpaidLeaveDeduction.toLocaleString()}</p>
+                                    <p><strong>Adjusted Base Salary: ₹${payroll.adjustedBaseSalary.toLocaleString()}</strong></p>
+                                ` : ''}
                                 <p>${this.translator.t('overtimePay')}: ₹${payroll.overtimePay.toLocaleString()} 
                                     <button id="show-overtime-details-btn" class="btn-small" style="margin-left: 10px;">Show Details</button>
                                 </p>
                                 <div id="overtime-details" style="display: none; margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
                                     <!-- Overtime details will be populated here -->
                                 </div>
-                                <p>${this.translator.t('fuelAllowance')}: ₹${payroll.fuelAllowance.toLocaleString()}</p>
+                                <p>Fuel Allowance: ₹${payroll.fuelAllowance.toLocaleString()} <small>(${payroll.daysWorked} days worked)</small></p>
                                 <hr style="margin: 10px 0;">
                                 <p><strong>${this.translator.t('grossPay')}: ₹${payroll.grossPay.toLocaleString()}</strong></p>
                             </div>
@@ -667,6 +686,115 @@ class DriverApp {
             // Hide details
             detailsDiv.style.display = 'none';
             button.textContent = 'Show Details';
+        }
+    }
+
+    showLeaveRequestForm() {
+        document.getElementById('action-forms').innerHTML = `
+            <div class="form-card">
+                <h3>Request Leave</h3>
+                <form id="leave-request-form">
+                    <div class="form-group">
+                        <label for="leave-date">Leave Date:</label>
+                        <input type="date" id="leave-date" required min="${new Date().toISOString().split('T')[0]}">
+                    </div>
+                    <div class="form-group">
+                        <label for="leave-reason">Reason:</label>
+                        <textarea id="leave-reason" required placeholder="Enter reason for leave" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="leave-type">Leave Type:</label>
+                        <select id="leave-type">
+                            <option value="annual">Annual Leave</option>
+                            <option value="sick">Sick Leave</option>
+                            <option value="emergency">Emergency Leave</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="action-btn">Submit Request</button>
+                    <button type="button" class="cancel-btn" onclick="this.parentElement.parentElement.remove()">Cancel</button>
+                </form>
+            </div>
+        `;
+        this.setupEventListeners();
+    }
+
+    async handleLeaveRequest(e) {
+        e.preventDefault();
+        const leaveDate = document.getElementById('leave-date').value;
+        const reason = document.getElementById('leave-reason').value;
+        const leaveType = document.getElementById('leave-type').value;
+
+        try {
+            const response = await fetch('/api/driver/leave-request', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.token}`
+                },
+                body: JSON.stringify({ leaveDate, reason, leaveType })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                this.showMessage('Leave request submitted successfully', 'success');
+                document.getElementById('action-forms').innerHTML = '';
+            } else {
+                this.showMessage(data.error || 'Failed to submit leave request', 'error');
+            }
+        } catch (error) {
+            this.showMessage('Error submitting leave request', 'error');
+        }
+    }
+
+    async loadLeaveRequests() {
+        try {
+            const currentYear = new Date().getFullYear();
+            const response = await fetch(`/api/driver/leave-requests/${currentYear}`, {
+                headers: { 'Authorization': `Bearer ${this.token}` }
+            });
+
+            const data = await response.json();
+            const shiftsDiv = document.getElementById('shifts-display');
+
+            if (data.leaveRequests.length > 0) {
+                shiftsDiv.innerHTML = `
+                    <div class="shifts-card">
+                        <h3>Leave Requests - ${currentYear}</h3>
+                        <div class="leave-summary">
+                            <p><strong>Annual Leaves Used:</strong> ${data.annualLeaveCount} / 12</p>
+                            <p><strong>Remaining Leaves:</strong> ${data.remainingLeaves}</p>
+                        </div>
+                        <hr style="margin: 15px 0;">
+                        ${data.leaveRequests.map(leave => `
+                            <div class="leave-item">
+                                <p><strong>Leave #${leave.id}</strong></p>
+                                <p><strong>Date:</strong> ${leave.leave_date}</p>
+                                <p><strong>Type:</strong> ${leave.leave_type}</p>
+                                <p><strong>Reason:</strong> ${leave.reason}</p>
+                                <p><strong>Status:</strong> <span class="status-badge ${leave.status}">${leave.status}</span></p>
+                                <p><strong>Requested:</strong> ${this.formatToIST(leave.requested_at)}</p>
+                                ${leave.approved_at ? `<p><strong>Processed:</strong> ${this.formatToIST(leave.approved_at)}</p>` : ''}
+                                ${leave.approved_by ? `<p><strong>Processed By:</strong> ${leave.approved_by}</p>` : ''}
+                                ${leave.notes ? `<p><strong>Notes:</strong> ${leave.notes}</p>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else {
+                shiftsDiv.innerHTML = `
+                    <div class="shifts-card">
+                        <h3>Leave Requests - ${currentYear}</h3>
+                        <div class="leave-summary">
+                            <p><strong>Annual Leaves Used:</strong> ${data.annualLeaveCount} / 12</p>
+                            <p><strong>Remaining Leaves:</strong> ${data.remainingLeaves}</p>
+                        </div>
+                        <p>No leave requests found for this year.</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            this.showMessage('Failed to load leave requests', 'error');
         }
     }
 
@@ -924,6 +1052,7 @@ class DriverApp {
                     <button id="drivers-tab" class="admin-tab-btn active">${this.translator.t('drivers')}</button>
                     <button id="shifts-tab" class="admin-tab-btn">${this.translator.t('shifts')}</button>
                     <button id="payroll-tab" class="admin-tab-btn">${this.translator.t('payrollSummary')}</button>
+                    <button id="leave-tab" class="admin-tab-btn">Leave Management</button>
                     <button id="reports-tab" class="admin-tab-btn">${this.translator.t('reports')}</button>
                     <button id="settings-tab" class="admin-tab-btn">${this.translator.t('settings')}</button>
                 </div>
@@ -938,6 +1067,7 @@ class DriverApp {
         document.getElementById('drivers-tab')?.addEventListener('click', () => this.showAdminTab('drivers'));
         document.getElementById('shifts-tab')?.addEventListener('click', () => this.showAdminTab('shifts'));
         document.getElementById('payroll-tab')?.addEventListener('click', () => this.showAdminTab('payroll'));
+        document.getElementById('leave-tab')?.addEventListener('click', () => this.showAdminTab('leave'));
         document.getElementById('reports-tab')?.addEventListener('click', () => this.showAdminTab('reports'));
         document.getElementById('settings-tab')?.addEventListener('click', () => this.showAdminTab('settings'));
 
@@ -958,6 +1088,9 @@ class DriverApp {
                 break;
             case 'payroll':
                 this.loadPayrollSummary();
+                break;
+            case 'leave':
+                this.loadLeaveManagement();
                 break;
             case 'reports':
                 this.loadReports();
@@ -2089,6 +2222,157 @@ class DriverApp {
         `;
 
         configHistoryDisplay.innerHTML = tableHtml;
+    }
+
+    async loadLeaveManagement() {
+        const content = document.getElementById('admin-content');
+        content.innerHTML = `
+            <div class="admin-section-content">
+                <div class="section-header">
+                    <h3>Leave Management</h3>
+                    <div class="filter-controls">
+                        <select id="leave-status-filter">
+                            <option value="">All Requests</option>
+                            <option value="pending">Pending</option>
+                            <option value="approved">Approved</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                        <button id="refresh-leave-btn" class="action-btn secondary">
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <div id="leave-requests-list" class="data-table-container">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+        `;
+
+        // Set up event listeners
+        document.getElementById('leave-status-filter')?.addEventListener('change', () => this.loadLeaveRequestsData());
+        document.getElementById('refresh-leave-btn')?.addEventListener('click', () => this.loadLeaveRequestsData());
+
+        await this.loadLeaveRequestsData();
+    }
+
+    async loadLeaveRequestsData() {
+        try {
+            const status = document.getElementById('leave-status-filter')?.value || '';
+            const response = await fetch(`/api/admin/leave-requests${status ? '?status=' + status : ''}`, {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.displayLeaveRequestsTable(data.leaveRequests);
+            } else {
+                document.getElementById('leave-requests-list').innerHTML = 
+                    `<div class="error">Failed to load leave requests</div>`;
+            }
+        } catch (error) {
+            document.getElementById('leave-requests-list').innerHTML = 
+                `<div class="error">Connection error</div>`;
+        }
+    }
+
+    displayLeaveRequestsTable(leaveRequests) {
+        if (leaveRequests.length === 0) {
+            document.getElementById('leave-requests-list').innerHTML = 
+                `<div class="no-data">No leave requests found</div>`;
+            return;
+        }
+
+        const tableHtml = `
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Request ID</th>
+                        <th>Driver</th>
+                        <th>Leave Date</th>
+                        <th>Type</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Requested</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${leaveRequests.map(leave => `
+                        <tr>
+                            <td>#${leave.id}</td>
+                            <td>${leave.driver_name}<br><small>${leave.driver_phone}</small></td>
+                            <td>${leave.leave_date}</td>
+                            <td>${leave.leave_type}</td>
+                            <td><div class="reason-text">${leave.reason}</div></td>
+                            <td><span class="status-badge ${leave.status}">${leave.status}</span></td>
+                            <td>${this.formatToIST(leave.requested_at)}</td>
+                            <td>
+                                ${leave.status === 'pending' ? `
+                                    <button class="btn-small approve-btn" data-leave-id="${leave.id}">
+                                        Approve
+                                    </button>
+                                    <button class="btn-small reject-btn" data-leave-id="${leave.id}">
+                                        Reject
+                                    </button>
+                                ` : `
+                                    <small>Processed by ${leave.approved_by}<br>${this.formatToIST(leave.approved_at)}</small>
+                                    ${leave.notes ? `<br><small>Notes: ${leave.notes}</small>` : ''}
+                                `}
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+
+        document.getElementById('leave-requests-list').innerHTML = tableHtml;
+
+        // Set up approval/rejection event listeners
+        document.querySelectorAll('.approve-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const leaveId = e.target.getAttribute('data-leave-id');
+                this.processLeaveRequest(leaveId, 'approved');
+            });
+        });
+
+        document.querySelectorAll('.reject-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const leaveId = e.target.getAttribute('data-leave-id');
+                this.processLeaveRequest(leaveId, 'rejected');
+            });
+        });
+    }
+
+    async processLeaveRequest(leaveId, status) {
+        const notes = prompt(`${status === 'approved' ? 'Approve' : 'Reject'} leave request. Add notes (optional):`);
+        
+        // Allow empty notes, but cancel if user clicks Cancel
+        if (notes === null) return;
+
+        try {
+            const response = await fetch(`/api/admin/leave-request/${leaveId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.token}`
+                },
+                body: JSON.stringify({ status, notes })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                this.showMessage(`Leave request ${status} successfully`, 'success');
+                this.loadLeaveRequestsData(); // Refresh the list
+            } else {
+                this.showMessage(data.error || `Failed to ${status} leave request`, 'error');
+            }
+        } catch (error) {
+            this.showMessage('Error processing leave request', 'error');
+        }
     }
 
     async loadCurrentConfig() {

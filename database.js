@@ -53,6 +53,22 @@ function initializeDatabase() {
         notes TEXT
       )`);
 
+      // Leave requests table
+      db.run(`CREATE TABLE IF NOT EXISTS leave_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        driver_id INTEGER NOT NULL,
+        leave_date DATE NOT NULL,
+        leave_type TEXT DEFAULT 'annual',
+        reason TEXT,
+        status TEXT DEFAULT 'pending',
+        requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        approved_by TEXT,
+        approved_at DATETIME,
+        notes TEXT,
+        FOREIGN KEY (driver_id) REFERENCES drivers (id),
+        UNIQUE(driver_id, leave_date)
+      )`);
+
       // Audit log for changes
       db.run(`CREATE TABLE IF NOT EXISTS audit_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -465,27 +481,37 @@ const dbHelpers = {
 
   // Calculate payroll for a driver for a specific month
   calculateDriverPayroll: async (driverId, year, month) => {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       const startDate = `${year}-${month.padStart(2, '0')}-01`;
       const endDate = new Date(year, month, 0).toISOString().split('T')[0]; // Last day of month
       
-      db.all(
-        `SELECT * FROM shifts 
-         WHERE driver_id = ? 
-         AND date(clock_in_time) BETWEEN ? AND ?
-         AND clock_out_time IS NOT NULL
-         ORDER BY clock_in_time`,
-        [driverId, startDate, endDate],
-        (err, shifts) => {
-          if (err) {
-            reject(err);
-            return;
-          }
+      try {
+        // Get shifts for the month
+        const shifts = await new Promise((resolve, reject) => {
+          db.all(
+            `SELECT * FROM shifts 
+             WHERE driver_id = ? 
+             AND date(clock_in_time) BETWEEN ? AND ?
+             AND clock_out_time IS NOT NULL
+             ORDER BY clock_in_time`,
+            [driverId, startDate, endDate],
+            (err, rows) => {
+              if (err) reject(err);
+              else resolve(rows);
+            }
+          );
+        });
 
-          // Payroll configuration
-          const BASE_SALARY = 27000; // ₹27,000 per month
-          const OVERTIME_RATE = 100; // ₹100 per hour
-          const FUEL_ALLOWANCE_PER_DAY = 33.30; // ₹33.30 per day worked
+        // Get approved leaves for the month
+        const monthLeaves = await dbHelpers.getApprovedLeaves(driverId, year, month);
+        
+        // Get annual leave count for the year
+        const annualLeaveCount = await dbHelpers.getAnnualLeaveCount(driverId, year);
+
+        // Payroll configuration
+        const BASE_SALARY = 27000; // ₹27,000 per month
+        const OVERTIME_RATE = 100; // ₹100 per hour
+        const FUEL_ALLOWANCE_PER_DAY = 33.30; // ₹33.30 per day worked
 
           let totalOvertimeMinutes = 0;
           let workedDays = new Set();
@@ -536,34 +562,65 @@ const dbHelpers = {
             totalRegularMinutes += regularMinutes;
           });
 
-          // Calculate final amounts
-          const overtimeHours = totalOvertimeMinutes / 60;
-          const regularHours = totalRegularMinutes / 60;
-          const daysWorked = workedDays.size;
-          
-          const overtimePay = overtimeHours * OVERTIME_RATE;
-          const fuelAllowance = daysWorked * FUEL_ALLOWANCE_PER_DAY;
-          const grossPay = BASE_SALARY + overtimePay + fuelAllowance;
+          // Calculate leave impact
+        const totalLeaveDays = monthLeaves.length;
+        const allowableLeavesUsed = Math.min(annualLeaveCount, 12);
+        const unpaidLeavesThisMonth = monthLeaves.filter(leave => {
+          // Calculate if this leave falls into unpaid category
+          const leaveDate = new Date(leave.leave_date);
+          const leavesBeforeThis = monthLeaves.filter(l => new Date(l.leave_date) < leaveDate).length;
+          const totalLeavesBefore = annualLeaveCount - totalLeaveDays + leavesBeforeThis;
+          return totalLeavesBefore >= 12;
+        }).length;
 
-          const payrollData = {
-            driverId,
-            month: parseInt(month),
-            year: parseInt(year),
-            shifts: shifts.length,
-            daysWorked,
-            totalDistance,
-            regularHours: Math.round(regularHours * 100) / 100,
-            overtimeHours: Math.round(overtimeHours * 100) / 100,
-            baseSalary: BASE_SALARY,
-            overtimePay: Math.round(overtimePay * 100) / 100,
-            fuelAllowance: Math.round(fuelAllowance * 100) / 100,
-            grossPay: Math.round(grossPay * 100) / 100,
-            shiftsDetails: shifts
-          };
+        const paidLeavesThisMonth = totalLeaveDays - unpaidLeavesThisMonth;
 
-          resolve(payrollData);
-        }
-      );
+        // Calculate final amounts
+        const overtimeHours = totalOvertimeMinutes / 60;
+        const regularHours = totalRegularMinutes / 60;
+        const daysWorked = workedDays.size;
+        
+        const overtimePay = overtimeHours * OVERTIME_RATE;
+        
+        // Fuel allowance: No fuel allowance for any leave days
+        const fuelAllowance = daysWorked * FUEL_ALLOWANCE_PER_DAY;
+        
+        // Salary deductions for unpaid leaves
+        const dailySalary = BASE_SALARY / 30; // Assuming 30 days per month
+        const unpaidLeaveDeduction = unpaidLeavesThisMonth * dailySalary;
+        const adjustedBaseSalary = BASE_SALARY - unpaidLeaveDeduction;
+        
+        const grossPay = adjustedBaseSalary + overtimePay + fuelAllowance;
+
+        const payrollData = {
+          driverId,
+          month: parseInt(month),
+          year: parseInt(year),
+          shifts: shifts.length,
+          daysWorked,
+          totalDistance,
+          regularHours: Math.round(regularHours * 100) / 100,
+          overtimeHours: Math.round(overtimeHours * 100) / 100,
+          baseSalary: BASE_SALARY,
+          adjustedBaseSalary: Math.round(adjustedBaseSalary * 100) / 100,
+          overtimePay: Math.round(overtimePay * 100) / 100,
+          fuelAllowance: Math.round(fuelAllowance * 100) / 100,
+          grossPay: Math.round(grossPay * 100) / 100,
+          // Leave information
+          totalLeaveDays,
+          paidLeavesThisMonth,
+          unpaidLeavesThisMonth,
+          annualLeaveCount,
+          allowableLeavesUsed,
+          unpaidLeaveDeduction: Math.round(unpaidLeaveDeduction * 100) / 100,
+          leaveDetails: monthLeaves,
+          shiftsDetails: shifts
+        };
+
+        resolve(payrollData);
+      } catch (error) {
+        reject(error);
+      }
     });
   },
 
@@ -824,6 +881,115 @@ const dbHelpers = {
         (err, rows) => {
           if (err) reject(err);
           else resolve(rows);
+        }
+      );
+    });
+  },
+
+  // Leave management functions
+  // Submit leave request
+  submitLeaveRequest: (driverId, leaveDate, reason, leaveType = 'annual') => {
+    return new Promise((resolve, reject) => {
+      db.run(
+        'INSERT INTO leave_requests (driver_id, leave_date, reason, leave_type) VALUES (?, ?, ?, ?)',
+        [driverId, leaveDate, reason, leaveType],
+        function(err) {
+          if (err) reject(err);
+          else resolve(this.lastID);
+        }
+      );
+    });
+  },
+
+  // Get leave requests for driver
+  getDriverLeaveRequests: (driverId, year) => {
+    return new Promise((resolve, reject) => {
+      const query = year 
+        ? 'SELECT * FROM leave_requests WHERE driver_id = ? AND strftime("%Y", leave_date) = ? ORDER BY leave_date DESC'
+        : 'SELECT * FROM leave_requests WHERE driver_id = ? ORDER BY leave_date DESC';
+      const params = year ? [driverId, year.toString()] : [driverId];
+      
+      db.all(query, params, (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+  },
+
+  // Get all leave requests for admin
+  getAllLeaveRequests: (status = null) => {
+    return new Promise((resolve, reject) => {
+      let query = `
+        SELECT lr.*, d.name as driver_name, d.phone as driver_phone 
+        FROM leave_requests lr 
+        JOIN drivers d ON lr.driver_id = d.id
+      `;
+      let params = [];
+      
+      if (status) {
+        query += ' WHERE lr.status = ?';
+        params.push(status);
+      }
+      
+      query += ' ORDER BY lr.requested_at DESC';
+      
+      db.all(query, params, (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+  },
+
+  // Update leave request status
+  updateLeaveRequestStatus: (leaveId, status, approvedBy, notes = null) => {
+    return new Promise((resolve, reject) => {
+      const approvedAt = status === 'approved' || status === 'rejected' ? new Date().toISOString() : null;
+      db.run(
+        'UPDATE leave_requests SET status = ?, approved_by = ?, approved_at = ?, notes = ? WHERE id = ?',
+        [status, approvedBy, approvedAt, notes, leaveId],
+        function(err) {
+          if (err) reject(err);
+          else resolve(this.changes);
+        }
+      );
+    });
+  },
+
+  // Get approved leaves for a driver in a specific month/year
+  getApprovedLeaves: (driverId, year, month) => {
+    return new Promise((resolve, reject) => {
+      const startDate = `${year}-${month.padStart(2, '0')}-01`;
+      const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+      
+      db.all(
+        `SELECT * FROM leave_requests 
+         WHERE driver_id = ? 
+         AND status = 'approved' 
+         AND leave_date BETWEEN ? AND ?
+         ORDER BY leave_date`,
+        [driverId, startDate, endDate],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+  },
+
+  // Get annual leave count for a driver in a calendar year
+  getAnnualLeaveCount: (driverId, year) => {
+    return new Promise((resolve, reject) => {
+      db.get(
+        `SELECT COUNT(*) as leave_count 
+         FROM leave_requests 
+         WHERE driver_id = ? 
+         AND status = 'approved' 
+         AND leave_type = 'annual'
+         AND strftime('%Y', leave_date) = ?`,
+        [driverId, year.toString()],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row.leave_count || 0);
         }
       );
     });

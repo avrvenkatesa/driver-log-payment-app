@@ -386,6 +386,101 @@ app.get('/api/admin/config', authenticateToken, async (req, res) => {
   }
 });
 
+// Leave Management API routes
+
+// Driver: Submit leave request
+app.post('/api/driver/leave-request', authenticateToken, async (req, res) => {
+  try {
+    const { leaveDate, reason, leaveType } = req.body;
+    const driverId = req.user.driverId;
+
+    if (!leaveDate || !reason) {
+      return res.status(400).json({ error: 'Leave date and reason are required' });
+    }
+
+    // Check if leave request already exists for this date
+    const existingRequest = await new Promise((resolve, reject) => {
+      dbHelpers.db.get(
+        'SELECT * FROM leave_requests WHERE driver_id = ? AND leave_date = ?',
+        [driverId, leaveDate],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    if (existingRequest) {
+      return res.status(400).json({ error: 'Leave request already exists for this date' });
+    }
+
+    const leaveId = await dbHelpers.submitLeaveRequest(driverId, leaveDate, reason, leaveType || 'annual');
+    res.json({ 
+      success: true, 
+      message: 'Leave request submitted successfully',
+      leaveId 
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to submit leave request' });
+  }
+});
+
+// Driver: Get own leave requests
+app.get('/api/driver/leave-requests/:year?', authenticateToken, async (req, res) => {
+  try {
+    const driverId = req.user.driverId;
+    const year = req.params.year || new Date().getFullYear();
+    
+    const leaveRequests = await dbHelpers.getDriverLeaveRequests(driverId, year);
+    const annualLeaveCount = await dbHelpers.getAnnualLeaveCount(driverId, year);
+    
+    res.json({ 
+      leaveRequests,
+      annualLeaveCount,
+      remainingLeaves: Math.max(0, 12 - annualLeaveCount)
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get leave requests' });
+  }
+});
+
+// Admin: Get all leave requests
+app.get('/api/admin/leave-requests', authenticateToken, async (req, res) => {
+  try {
+    const { status } = req.query;
+    const leaveRequests = await dbHelpers.getAllLeaveRequests(status);
+    res.json({ leaveRequests });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get leave requests' });
+  }
+});
+
+// Admin: Update leave request status
+app.put('/api/admin/leave-request/:leaveId', authenticateToken, async (req, res) => {
+  try {
+    const { leaveId } = req.params;
+    const { status, notes } = req.body;
+    const approvedBy = req.user.email || req.user.phone || 'admin';
+
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ error: 'Status must be approved or rejected' });
+    }
+
+    const changes = await dbHelpers.updateLeaveRequestStatus(leaveId, status, approvedBy, notes);
+    
+    if (changes === 0) {
+      return res.status(404).json({ error: 'Leave request not found' });
+    }
+
+    res.json({ 
+      success: true, 
+      message: `Leave request ${status} successfully` 
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update leave request' });
+  }
+});
+
 // Serve the main frontend
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
