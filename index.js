@@ -362,6 +362,30 @@ app.get('/api/admin/payroll-config-history', authenticateToken, async (req, res)
   }
 });
 
+app.get('/api/admin/config-history', authenticateToken, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50;
+    const history = await dbHelpers.getPayrollConfigHistory(limit);
+    res.json({ history });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get payroll configuration history' });
+  }
+});
+
+app.get('/api/admin/config', authenticateToken, async (req, res) => {
+  try {
+    const config = await dbHelpers.getCurrentPayrollConfig();
+    res.json({
+      monthlySalary: config.monthly_salary || 27000,
+      overtimeRate: config.overtime_rate || 100,
+      fuelAllowance: config.fuel_allowance || 33.30,
+      workingHours: config.working_hours || 8
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get current configuration' });
+  }
+});
+
 // Serve the main frontend
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

@@ -2026,10 +2026,10 @@ class DriverApp {
                 const data = await response.json();
                 this.displayConfigHistory(data.history);
             } else {
-                configHistoryDisplay.innerHTML = `<div class="error">${this.translator.t('failedToLoadConfigHistory')}</div>`;
+                configHistoryDisplay.innerHTML = `<div class="error">Failed to load configuration history</div>`;
             }
         } catch (error) {
-            configHistoryDisplay.innerHTML = `<div class="error">${this.translator.t('connectionError')}</div>`;
+            configHistoryDisplay.innerHTML = `<div class="error">Connection error</div>`;
         }
     }
 
@@ -2037,7 +2037,7 @@ class DriverApp {
         const configHistoryDisplay = document.getElementById('config-history-display');
 
         if (history.length === 0) {
-            configHistoryDisplay.innerHTML = `<div class="no-data">${this.translator.t('noConfigHistoryAvailable')}</div>`;
+            configHistoryDisplay.innerHTML = `<div class="no-data">No configuration history available</div>`;
             return;
         }
 
@@ -2045,21 +2045,23 @@ class DriverApp {
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>${this.translator.t('timestamp')}</th>
-                        <th>${this.translator.t('monthlySalary')}</th>
-                        <th>${this.translator.t('overtimeRate')}</th>
-                        <th>${this.translator.t('fuelAllowance')}</th>
-                        <th>${this.translator.t('workingHours')}</th>
+                        <th>Date & Time</th>
+                        <th>Monthly Salary</th>
+                        <th>Overtime Rate</th>
+                        <th>Fuel Allowance</th>
+                        <th>Working Hours</th>
+                        <th>Changed By</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${history.map(item => `
                         <tr>
-                            <td>${this.formatToIST(item.timestamp)}</td>
-                            <td>₹${item.monthlySalary.toLocaleString()}</td>
-                            <td>₹${item.overtimeRate.toLocaleString()}</td>
-                            <td>₹${item.fuelAllowance.toLocaleString()}</td>
-                             <td>${item.workingHours}</td>
+                            <td>${this.formatToIST(item.changed_at)}</td>
+                            <td>₹${item.monthly_salary.toLocaleString()}</td>
+                            <td>₹${item.overtime_rate.toLocaleString()}</td>
+                            <td>₹${item.fuel_allowance.toLocaleString()}</td>
+                            <td>${item.working_hours}h</td>
+                            <td>${item.changed_by || 'System'}</td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -2070,7 +2072,7 @@ class DriverApp {
     }
 
     async loadCurrentConfig() {
-         try {
+        try {
             const response = await fetch('/api/admin/config', {
                 headers: {
                     'Authorization': `Bearer ${this.token}`
@@ -2079,11 +2081,11 @@ class DriverApp {
 
             if (response.ok) {
                 const data = await response.json();
-                 document.getElementById('config-monthly-salary').value = data.monthlySalary;
-                 document.getElementById('config-overtime-rate').value = data.overtimeRate;
-                 document.getElementById('config-fuel-allowance').value = data.fuelAllowance;
-                 document.getElementById('config-working-hours').value = data.workingHours;
-                 this.updateConfigPreview();
+                document.getElementById('config-monthly-salary').value = data.monthlySalary;
+                document.getElementById('config-overtime-rate').value = data.overtimeRate;
+                document.getElementById('config-fuel-allowance').value = data.fuelAllowance;
+                document.getElementById('config-working-hours').value = data.workingHours;
+                this.updateConfigPreview();
             } else {
                 this.showMessage('Failed to load current configuration', 'error');
             }
