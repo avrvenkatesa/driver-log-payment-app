@@ -810,7 +810,7 @@ class DriverApp {
         // Set up refresh button event listener
         document.getElementById('refresh-drivers-btn')?.addEventListener('click', () => this.loadDriversData());
 
-        await this.loadDriversData();
+        await this.loadDriversData();```text
     }
 
     async loadDriversData() {
@@ -1609,6 +1609,19 @@ class DriverApp {
                             <span id="uptime-display">-</span>
                         </div>
                     </div>
+
+                    <div class="setting-card full-width">
+                        <h4>Configuration History</h4>
+                        <p>View historical changes to payroll configuration settings.</p>
+                        <div class="section-controls">
+                            <button type="button" id="load-config-history-btn" class="action-btn secondary">
+                                Load Configuration History
+                            </button>
+                        </div>
+                        <div id="config-history-display" class="data-display">
+                            <div class="loading">Click "Load Configuration History" to view changes</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
@@ -1618,11 +1631,15 @@ class DriverApp {
         document.getElementById('generate-test-data-form')?.addEventListener('submit', (e) => this.handleGenerateTestData(e));
         document.getElementById('backup-data-btn')?.addEventListener('click', () => this.confirmAction('backup'));
         document.getElementById('clear-data-btn')?.addEventListener('click', () => this.confirmAction('clear'));
+        document.getElementById('load-config-history-btn')?.addEventListener('click', () => this.loadConfigHistory());
 
         // Update config preview when values change
-        ['config-monthly-salary', 'config-overtime-rate', 'config-fuel-allowance'].forEach(id => {
+        ['config-monthly-salary', 'config-overtime-rate', 'config-fuel-allowance', 'config-working-hours'].forEach(id => {
             document.getElementById(id)?.addEventListener('input', () => this.updateConfigPreview());
         });
+
+        // Load current configuration from server
+        this.loadCurrentConfig();
 
         // Set default months
         const currentMonth = new Date().toISOString().slice(0, 7);
@@ -1631,6 +1648,87 @@ class DriverApp {
 
         // Initialize config preview
         this.updateConfigPreview();
+    }
+
+     async loadConfigHistory() {
+        const configHistoryDisplay = document.getElementById('config-history-display');
+        configHistoryDisplay.innerHTML = `<div class="loading">${this.translator.t('loading')}...</div>`;
+
+        try {
+            const response = await fetch('/api/admin/config-history', {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.displayConfigHistory(data.history);
+            } else {
+                configHistoryDisplay.innerHTML = `<div class="error">${this.translator.t('failedToLoadConfigHistory')}</div>`;
+            }
+        } catch (error) {
+            configHistoryDisplay.innerHTML = `<div class="error">${this.translator.t('connectionError')}</div>`;
+        }
+    }
+
+    displayConfigHistory(history) {
+        const configHistoryDisplay = document.getElementById('config-history-display');
+
+        if (history.length === 0) {
+            configHistoryDisplay.innerHTML = `<div class="no-data">${this.translator.t('noConfigHistoryAvailable')}</div>`;
+            return;
+        }
+
+        const tableHtml = `
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>${this.translator.t('timestamp')}</th>
+                        <th>${this.translator.t('monthlySalary')}</th>
+                        <th>${this.translator.t('overtimeRate')}</th>
+                        <th>${this.translator.t('fuelAllowance')}</th>
+                        <th>${this.translator.t('workingHours')}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${history.map(item => `
+                        <tr>
+                            <td>${this.formatToIST(item.timestamp)}</td>
+                            <td>₹${item.monthlySalary.toLocaleString()}</td>
+                            <td>₹${item.overtimeRate.toLocaleString()}</td>
+                            <td>₹${item.fuelAllowance.toLocaleString()}</td>
+                             <td>${item.workingHours}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+
+        configHistoryDisplay.innerHTML = tableHtml;
+    }
+
+    async loadCurrentConfig() {
+         try {
+            const response = await fetch('/api/admin/config', {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                 document.getElementById('config-monthly-salary').value = data.monthlySalary;
+                 document.getElementById('config-overtime-rate').value = data.overtimeRate;
+                 document.getElementById('config-fuel-allowance').value = data.fuelAllowance;
+                 document.getElementById('config-working-hours').value = data.workingHours;
+                 this.updateConfigPreview();
+            } else {
+                this.showMessage('Failed to load current configuration', 'error');
+            }
+        } catch (error) {
+            this.showMessage('Connection error', 'error');
+        }
     }
 }
 

@@ -304,6 +304,52 @@ app.post('/api/admin/clear-test-data', authenticateToken, async (req, res) => {
   }
 });
 
+// Payroll configuration endpoints
+app.get('/api/admin/payroll-config', authenticateToken, async (req, res) => {
+  try {
+    const currentConfig = await dbHelpers.getCurrentPayrollConfig();
+    res.json({ config: currentConfig });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get payroll configuration' });
+  }
+});
+
+app.post('/api/admin/payroll-config', authenticateToken, async (req, res) => {
+  try {
+    const { monthlySalary, overtimeRate, fuelAllowance, workingHours, notes } = req.body;
+    
+    if (!monthlySalary || !overtimeRate || !fuelAllowance) {
+      return res.status(400).json({ error: 'Monthly salary, overtime rate, and fuel allowance are required' });
+    }
+
+    const configId = await dbHelpers.savePayrollConfig({
+      monthlySalary,
+      overtimeRate,
+      fuelAllowance,
+      workingHours,
+      notes
+    }, req.user.email || 'admin');
+
+    res.json({ 
+      success: true, 
+      message: 'Payroll configuration saved successfully',
+      configId 
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to save payroll configuration' });
+  }
+});
+
+app.get('/api/admin/payroll-config-history', authenticateToken, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50;
+    const history = await dbHelpers.getPayrollConfigHistory(limit);
+    res.json({ history });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get payroll configuration history' });
+  }
+});
+
 // Serve the main frontend
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

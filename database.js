@@ -41,6 +41,18 @@ function initializeDatabase() {
         FOREIGN KEY (driver_id) REFERENCES drivers (id)
       )`);
 
+      // Payroll configuration history
+      db.run(`CREATE TABLE IF NOT EXISTS payroll_config_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        monthly_salary REAL NOT NULL,
+        overtime_rate REAL NOT NULL,
+        fuel_allowance REAL NOT NULL,
+        working_hours REAL DEFAULT 8,
+        changed_by TEXT,
+        changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        notes TEXT
+      )`);
+
       // Audit log for changes
       db.run(`CREATE TABLE IF NOT EXISTS audit_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -765,6 +777,55 @@ const dbHelpers = {
           }
         });
       });
+    });
+  },
+
+  // Save payroll configuration
+  savePayrollConfig: (config, changedBy = 'system') => {
+    return new Promise((resolve, reject) => {
+      const { monthlySalary, overtimeRate, fuelAllowance, workingHours, notes } = config;
+      db.run(
+        `INSERT INTO payroll_config_history (monthly_salary, overtime_rate, fuel_allowance, working_hours, changed_by, notes) 
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [monthlySalary, overtimeRate, fuelAllowance, workingHours || 8, changedBy, notes || ''],
+        function(err) {
+          if (err) reject(err);
+          else resolve(this.lastID);
+        }
+      );
+    });
+  },
+
+  // Get current payroll configuration
+  getCurrentPayrollConfig: () => {
+    return new Promise((resolve, reject) => {
+      db.get(
+        'SELECT * FROM payroll_config_history ORDER BY changed_at DESC LIMIT 1',
+        [],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row || {
+            monthly_salary: 27000,
+            overtime_rate: 100,
+            fuel_allowance: 33.30,
+            working_hours: 8
+          });
+        }
+      );
+    });
+  },
+
+  // Get payroll configuration history
+  getPayrollConfigHistory: (limit = 50) => {
+    return new Promise((resolve, reject) => {
+      db.all(
+        'SELECT * FROM payroll_config_history ORDER BY changed_at DESC LIMIT ?',
+        [limit],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
     });
   }
 };
