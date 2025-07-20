@@ -927,3 +927,182 @@ main {
         max-width: 150px;
     }
 }
+
+/* Shift Data Management Styles */
+.shift-data-controls {
+    display: flex;
+    gap: 20px;
+    align-items: end;
+    margin-bottom: 20px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    flex-wrap: wrap;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.control-group label {
+    font-weight: 500;
+    color: #555;
+}
+
+.control-group select,
+.control-group input {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    min-width: 150px;
+}
+
+.shift-data-table-wrapper {
+    overflow-x: auto;
+    margin-top: 20px;
+}
+
+.table-info {
+    background: #e3f2fd;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.table-info p {
+    margin: 5px 0;
+}
+
+.shift-data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.shift-data-table th,
+.shift-data-table td {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.shift-data-table th {
+    background: #f5f5f5;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.shift-row.weekend {
+    background: #fff3e0;
+}
+
+.shift-row.has-data {
+    background: #e8f5e8;
+}
+
+.shift-row.modified {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+}
+
+.weekend-day {
+    color: #ff5722;
+    font-weight: 500;
+}
+
+.date-cell {
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.shift-input {
+    width: 100%;
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.shift-input:focus {
+    border-color: #4CAF50;
+    outline: none;
+}
+
+.calculated-distance,
+.calculated-duration {
+    font-family: monospace;
+    font-weight: 500;
+    color: #555;
+    background: #f9f9f9;
+    text-align: center;
+}
+
+.actions-cell {
+    text-align: center;
+    white-space: nowrap;
+}
+
+.status-indicator {
+    display: none;
+    color: #ffc107;
+    font-size: 12px;
+    margin-left: 5px;
+}
+
+.shift-row.modified .status-indicator {
+    display: inline;
+}
+
+.btn-small {
+    padding: 4px 8px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+    margin: 0 2px;
+}
+
+.btn-small.danger {
+    background: #f44336;
+    color: white;
+}
+
+.btn-small.danger:hover {
+    background: #d32f2f;
+}
+
+.action-btn.success {
+    background: #4CAF50;
+    color: white;
+}
+
+.action-btn.success:hover {
+    background: #45a049;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .shift-data-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .control-group {
+        width: 100%;
+    }
+
+    .shift-data-table {
+        font-size: 12px;
+    }
+
+    .shift-input {
+        font-size: 12px;
+        padding: 2px 4px;
+    }
+}

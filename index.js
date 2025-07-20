@@ -252,6 +252,75 @@ app.put('/api/admin/driver/:driverId/status', authenticateToken, async (req, res
   }
 });
 
+// Admin: Get monthly shift data for editing
+app.get('/api/admin/shifts/monthly/:driverId/:year/:month', authenticateToken, async (req, res) => {
+  try {
+    const { driverId, year, month } = req.params;
+    const monthlyData = await dbHelpers.getMonthlyShiftData(driverId, year, month);
+    res.json({ monthlyData });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get monthly shift data' });
+  }
+});
+
+// Admin: Update or create shift entry
+app.put('/api/admin/shifts/:shiftId?', authenticateToken, async (req, res) => {
+  try {
+    const { shiftId } = req.params;
+    const { driverId, date, startTime, endTime, startOdometer, endOdometer } = req.body;
+
+    if (!driverId || !date || !startTime || !startOdometer) {
+      return res.status(400).json({ error: 'Driver ID, date, start time, and start odometer are required' });
+    }
+
+    let result;
+    if (shiftId && shiftId !== 'new') {
+      // Update existing shift
+      result = await dbHelpers.updateShiftEntry(shiftId, {
+        startTime,
+        endTime,
+        startOdometer,
+        endOdometer
+      });
+    } else {
+      // Create new shift
+      result = await dbHelpers.createShiftEntry(driverId, date, {
+        startTime,
+        endTime,
+        startOdometer,
+        endOdometer
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      message: shiftId && shiftId !== 'new' ? 'Shift updated successfully' : 'Shift created successfully',
+      shiftId: result
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to save shift data' });
+  }
+});
+
+// Admin: Delete shift entry
+app.delete('/api/admin/shifts/:shiftId', authenticateToken, async (req, res) => {
+  try {
+    const { shiftId } = req.params;
+    const changes = await dbHelpers.deleteShiftEntry(shiftId);
+    
+    if (changes === 0) {
+      return res.status(404).json({ error: 'Shift not found' });
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Shift deleted successfully' 
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete shift' });
+  }
+});
+
 // Payroll API routes (protected)
 app.get('/api/admin/payroll/:year/:month', authenticateToken, async (req, res) => {
   try {

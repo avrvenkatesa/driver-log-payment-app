@@ -1194,6 +1194,7 @@ class DriverApp {
                     <button id="drivers-tab" class="admin-tab-btn active">${this.translator.t('drivers')}</button>
                     <button id="shifts-tab" class="admin-tab-btn">${this.translator.t('shifts')}</button>
                     <button id="payroll-tab" class="admin-tab-btn">${this.translator.t('payrollSummary')}</button>
+                    <button id="shift-data-tab" class="admin-tab-btn">Shift Data</button>
                     <button id="leave-tab" class="admin-tab-btn">${this.translator.t('leaveRequests')}</button>
                     <button id="reports-tab" class="admin-tab-btn">${this.translator.t('reports')}</button>
                     <button id="settings-tab" class="admin-tab-btn">${this.translator.t('settings')}</button>
@@ -1209,6 +1210,7 @@ class DriverApp {
         document.getElementById('drivers-tab')?.addEventListener('click', () => this.showAdminTab('drivers'));
         document.getElementById('shifts-tab')?.addEventListener('click', () => this.showAdminTab('shifts'));
         document.getElementById('payroll-tab')?.addEventListener('click', () => this.showAdminTab('payroll'));
+        document.getElementById('shift-data-tab')?.addEventListener('click', () => this.showAdminTab('shift-data'));
         document.getElementById('leave-tab')?.addEventListener('click', () => this.showAdminTab('leave'));
         document.getElementById('reports-tab')?.addEventListener('click', () => this.showAdminTab('reports'));
         document.getElementById('settings-tab')?.addEventListener('click', () => this.showAdminTab('settings'));
@@ -1230,6 +1232,9 @@ class DriverApp {
                 break;
             case 'payroll':
                 this.loadPayrollSummary();
+                break;
+            case 'shift-data':
+                this.loadShiftDataManagement();
                 break;
             case 'leave':
                 this.loadLeaveManagement();
@@ -2724,6 +2729,397 @@ class DriverApp {
             }
         } catch (error) {
             this.showMessage('Connection error', 'error');
+        }
+    }
+
+    async loadShiftDataManagement() {
+        const content = document.getElementById('admin-content');
+        
+        // Load drivers for dropdown
+        let driversOptions = '<option value="">Select Driver</option>';
+        try {
+            const response = await fetch('/api/admin/drivers', {
+                headers: { 'Authorization': `Bearer ${this.token}` }
+            });
+            const data = await response.json();
+            if (data.drivers) {
+                driversOptions = '<option value="">Select Driver</option>' + 
+                    data.drivers.filter(driver => driver.is_active).map(driver => 
+                        `<option value="${driver.id}">${driver.name} (${driver.phone})</option>`
+                    ).join('');
+            }
+        } catch (error) {
+            console.error('Failed to load drivers:', error);
+        }
+
+        content.innerHTML = `
+            <div class="admin-section-content">
+                <div class="section-header">
+                    <h3>Shift Data Management</h3>
+                    <p>Edit and manage shift entries for drivers. Use this to correct data or add entries when going live.</p>
+                </div>
+
+                <div class="shift-data-controls">
+                    <div class="control-group">
+                        <label for="shift-data-driver">Select Driver:</label>
+                        <select id="shift-data-driver" required>
+                            ${driversOptions}
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="shift-data-month">Month:</label>
+                        <input type="month" id="shift-data-month" required>
+                    </div>
+                    <div class="control-group">
+                        <button id="load-shift-data-btn" class="action-btn">Load Shift Data</button>
+                        <button id="save-all-shifts-btn" class="action-btn success" style="display: none;">Save All Changes</button>
+                    </div>
+                </div>
+
+                <div id="shift-data-table-container" class="data-table-container">
+                    <div class="info">Select a driver and month to load shift data for editing.</div>
+                </div>
+            </div>
+        `;
+
+        // Set up event listeners
+        document.getElementById('load-shift-data-btn')?.addEventListener('click', () => this.loadShiftDataTable());
+        document.getElementById('save-all-shifts-btn')?.addEventListener('click', () => this.saveAllShiftChanges());
+
+        // Set default month to current month
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        document.getElementById('shift-data-month').value = currentMonth;
+    }
+
+    async loadShiftDataTable() {
+        const driverId = document.getElementById('shift-data-driver').value;
+        const month = document.getElementById('shift-data-month').value;
+
+        if (!driverId || !month) {
+            this.showMessage('Please select both driver and month', 'error');
+            return;
+        }
+
+        const [year, monthNum] = month.split('-');
+        const tableContainer = document.getElementById('shift-data-table-container');
+        tableContainer.innerHTML = `<div class="loading">Loading shift data...</div>`;
+
+        try {
+            const response = await fetch(`/api/admin/shifts/monthly/${driverId}/${year}/${monthNum}`, {
+                headers: { 'Authorization': `Bearer ${this.token}` }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.displayShiftDataTable(data.monthlyData, driverId, year, monthNum);
+                document.getElementById('save-all-shifts-btn').style.display = 'inline-block';
+            } else {
+                tableContainer.innerHTML = `<div class="error">Failed to load shift data</div>`;
+            }
+        } catch (error) {
+            tableContainer.innerHTML = `<div class="error">Connection error</div>`;
+        }
+    }
+
+    displayShiftDataTable(monthlyData, driverId, year, month) {
+        const tableContainer = document.getElementById('shift-data-table-container');
+        
+        const tableHtml = `
+            <div class="shift-data-table-wrapper">
+                <div class="table-info">
+                    <p><strong>Driver:</strong> ${document.getElementById('shift-data-driver').selectedOptions[0].text}</p>
+                    <p><strong>Month:</strong> ${this.getMonthName(parseInt(month))} ${year}</p>
+                    <p><strong>Instructions:</strong> Fill in shift details. Leave blank if no shift occurred on that date.</p>
+                </div>
+                
+                <table class="shift-data-table editable-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Day</th>
+                            <th>Start Time</th>
+                            <th>End Time</th>
+                            <th>Start Odometer</th>
+                            <th>End Odometer</th>
+                            <th>Distance</th>
+                            <th>Duration</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${monthlyData.map((dayData, index) => {
+                            const date = new Date(dayData.date);
+                            const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+                            const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                            const distance = dayData.startOdometer && dayData.endOdometer ? 
+                                dayData.endOdometer - dayData.startOdometer : '';
+                            const duration = dayData.startTime && dayData.endTime ? 
+                                this.calculateDuration(dayData.startTime, dayData.endTime) : '';
+                            
+                            return `
+                                <tr class="shift-row ${isWeekend ? 'weekend' : ''} ${dayData.hasData ? 'has-data' : ''}" 
+                                    data-date="${dayData.date}" 
+                                    data-shift-id="${dayData.shiftId || 'new'}"
+                                    data-driver-id="${driverId}">
+                                    <td class="date-cell">${dayData.date}</td>
+                                    <td class="day-cell ${isWeekend ? 'weekend-day' : ''}">${dayName}</td>
+                                    <td>
+                                        <input type="time" class="shift-input start-time" 
+                                               value="${dayData.startTime}" 
+                                               onchange="this.closest('tr').classList.add('modified')">
+                                    </td>
+                                    <td>
+                                        <input type="time" class="shift-input end-time" 
+                                               value="${dayData.endTime}"
+                                               onchange="this.closest('tr').classList.add('modified')">
+                                    </td>
+                                    <td>
+                                        <input type="number" class="shift-input start-odo" 
+                                               value="${dayData.startOdometer || ''}" 
+                                               min="0" step="1"
+                                               onchange="this.closest('tr').classList.add('modified')">
+                                    </td>
+                                    <td>
+                                        <input type="number" class="shift-input end-odo" 
+                                               value="${dayData.endOdometer || ''}" 
+                                               min="0" step="1"
+                                               onchange="this.closest('tr').classList.add('modified')">
+                                    </td>
+                                    <td class="calculated-distance">${distance}</td>
+                                    <td class="calculated-duration">${duration}</td>
+                                    <td class="actions-cell">
+                                        ${dayData.hasData ? `
+                                            <button class="btn-small danger delete-shift-btn" 
+                                                    data-shift-id="${dayData.shiftId}"
+                                                    title="Delete this shift">
+                                                🗑️
+                                            </button>
+                                        ` : ''}
+                                        <span class="status-indicator" title="Unsaved changes">●</span>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        tableContainer.innerHTML = tableHtml;
+
+        // Set up event listeners for real-time calculations
+        this.setupShiftDataEventListeners();
+    }
+
+    setupShiftDataEventListeners() {
+        // Add event listeners for automatic calculations
+        document.querySelectorAll('.shift-input').forEach(input => {
+            input.addEventListener('input', (e) => {
+                const row = e.target.closest('.shift-row');
+                this.updateRowCalculations(row);
+            });
+        });
+
+        // Add event listeners for delete buttons
+        document.querySelectorAll('.delete-shift-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const shiftId = e.target.getAttribute('data-shift-id');
+                this.deleteShiftRow(shiftId);
+            });
+        });
+    }
+
+    updateRowCalculations(row) {
+        const startTime = row.querySelector('.start-time').value;
+        const endTime = row.querySelector('.end-time').value;
+        const startOdo = parseFloat(row.querySelector('.start-odo').value) || 0;
+        const endOdo = parseFloat(row.querySelector('.end-odo').value) || 0;
+
+        // Update distance
+        const distanceCell = row.querySelector('.calculated-distance');
+        if (startOdo && endOdo && endOdo > startOdo) {
+            distanceCell.textContent = `${endOdo - startOdo} km`;
+        } else {
+            distanceCell.textContent = '';
+        }
+
+        // Update duration
+        const durationCell = row.querySelector('.calculated-duration');
+        if (startTime && endTime) {
+            const duration = this.calculateDuration(startTime, endTime);
+            durationCell.textContent = duration;
+        } else {
+            durationCell.textContent = '';
+        }
+
+        // Show status indicator
+        row.classList.add('modified');
+        const statusIndicator = row.querySelector('.status-indicator');
+        if (statusIndicator) {
+            statusIndicator.style.display = 'inline';
+        }
+    }
+
+    calculateDuration(startTime, endTime) {
+        if (!startTime || !endTime) return '';
+        
+        const start = new Date(`2000-01-01T${startTime}`);
+        const end = new Date(`2000-01-01T${endTime}`);
+        
+        if (end <= start) return '';
+        
+        const diffMs = end - start;
+        const hours = Math.floor(diffMs / (1000 * 60 * 60));
+        const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        
+        return `${hours}h ${minutes}m`;
+    }
+
+    async saveAllShiftChanges() {
+        const modifiedRows = document.querySelectorAll('.shift-row.modified');
+        
+        if (modifiedRows.length === 0) {
+            this.showMessage('No changes to save', 'info');
+            return;
+        }
+
+        const saveBtn = document.getElementById('save-all-shifts-btn');
+        const originalText = saveBtn.textContent;
+        saveBtn.textContent = 'Saving...';
+        saveBtn.disabled = true;
+
+        let savedCount = 0;
+        let errorCount = 0;
+
+        for (const row of modifiedRows) {
+            try {
+                await this.saveShiftRow(row);
+                savedCount++;
+                row.classList.remove('modified');
+                row.querySelector('.status-indicator').style.display = 'none';
+            } catch (error) {
+                errorCount++;
+                console.error('Error saving row:', error);
+            }
+        }
+
+        saveBtn.textContent = originalText;
+        saveBtn.disabled = false;
+
+        if (errorCount === 0) {
+            this.showMessage(`Successfully saved ${savedCount} shift entries`, 'success');
+        } else {
+            this.showMessage(`Saved ${savedCount} entries, ${errorCount} failed`, 'warning');
+        }
+    }
+
+    async saveShiftRow(row) {
+        const shiftId = row.getAttribute('data-shift-id');
+        const driverId = row.getAttribute('data-driver-id');
+        const date = row.getAttribute('data-date');
+        
+        const startTime = row.querySelector('.start-time').value;
+        const endTime = row.querySelector('.end-time').value;
+        const startOdometer = parseFloat(row.querySelector('.start-odo').value) || null;
+        const endOdometer = parseFloat(row.querySelector('.end-odo').value) || null;
+
+        // Skip if no meaningful data is entered
+        if (!startTime && !startOdometer) {
+            return;
+        }
+
+        const shiftData = {
+            driverId,
+            date,
+            startTime,
+            endTime,
+            startOdometer,
+            endOdometer
+        };
+
+        const response = await fetch(`/api/admin/shifts/${shiftId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.token}`
+            },
+            body: JSON.stringify(shiftData)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to save shift');
+        }
+
+        const result = await response.json();
+        
+        // Update the row's shift ID if it was a new entry
+        if (shiftId === 'new' && result.shiftId) {
+            row.setAttribute('data-shift-id', result.shiftId);
+            row.classList.add('has-data');
+            
+            // Add delete button if it doesn't exist
+            const actionsCell = row.querySelector('.actions-cell');
+            if (!actionsCell.querySelector('.delete-shift-btn')) {
+                actionsCell.innerHTML = `
+                    <button class="btn-small danger delete-shift-btn" 
+                            data-shift-id="${result.shiftId}"
+                            title="Delete this shift">
+                        🗑️
+                    </button>
+                    <span class="status-indicator" title="Unsaved changes">●</span>
+                `;
+                
+                // Re-setup event listener for the new delete button
+                const deleteBtn = actionsCell.querySelector('.delete-shift-btn');
+                deleteBtn.addEventListener('click', (e) => {
+                    const shiftId = e.target.getAttribute('data-shift-id');
+                    this.deleteShiftRow(shiftId);
+                });
+            }
+        }
+    }
+
+    async deleteShiftRow(shiftId) {
+        if (!confirm('Are you sure you want to delete this shift entry?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/admin/shifts/${shiftId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+
+            if (response.ok) {
+                // Clear the row data but keep the row for editing
+                const row = document.querySelector(`[data-shift-id="${shiftId}"]`);
+                if (row) {
+                    row.querySelector('.start-time').value = '';
+                    row.querySelector('.end-time').value = '';
+                    row.querySelector('.start-odo').value = '';
+                    row.querySelector('.end-odo').value = '';
+                    row.querySelector('.calculated-distance').textContent = '';
+                    row.querySelector('.calculated-duration').textContent = '';
+                    row.classList.remove('has-data', 'modified');
+                    row.setAttribute('data-shift-id', 'new');
+                    
+                    // Remove delete button
+                    const deleteBtn = row.querySelector('.delete-shift-btn');
+                    if (deleteBtn) {
+                        deleteBtn.remove();
+                    }
+                }
+                
+                this.showMessage('Shift deleted successfully', 'success');
+            } else {
+                const error = await response.json();
+                this.showMessage(error.error || 'Failed to delete shift', 'error');
+            }
+        } catch (error) {
+            this.showMessage('Error deleting shift', 'error');
         }
     }
 }

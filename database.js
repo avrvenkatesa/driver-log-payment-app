@@ -1008,6 +1008,200 @@ const dbHelpers = {
         }
       );
     });
+  },
+
+  // Get monthly shift data for admin editing interface
+  getMonthlyShiftData: (driverId, year, month) => {
+    return new Promise((resolve, reject) => {
+      const startDate = `${year}-${month.padStart(2, '0')}-01`;
+      const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+      
+      // Get all shifts for the month
+      db.all(
+        `SELECT * FROM shifts 
+         WHERE driver_id = ? 
+         AND date(clock_in_time) BETWEEN ? AND ?
+         ORDER BY clock_in_time`,
+        [driverId, startDate, endDate],
+        (err, shifts) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          // Create a map of date -> shift data
+          const shiftsByDate = {};
+          shifts.forEach(shift => {
+            const shiftDate = shift.clock_in_time.split(' ')[0];
+            shiftsByDate[shiftDate] = shift;
+          });
+
+          // Generate all dates in the month
+          const daysInMonth = new Date(year, month, 0).getDate();
+          const monthlyData = [];
+          
+          for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${year}-${month.padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+            const shift = shiftsByDate[dateStr];
+            
+            if (shift) {
+              // Extract time parts from datetime strings
+              const startTimePart = shift.clock_in_time.split(' ')[1] || '';
+              const endTimePart = shift.clock_out_time ? shift.clock_out_time.split(' ')[1] || '' : '';
+              
+              monthlyData.push({
+                date: dateStr,
+                shiftId: shift.id,
+                startTime: startTimePart,
+                endTime: endTimePart,
+                startOdometer: shift.start_odometer,
+                endOdometer: shift.end_odometer,
+                totalDistance: shift.total_distance,
+                duration: shift.shift_duration_minutes,
+                status: shift.status,
+                hasData: true
+              });
+            } else {
+              monthlyData.push({
+                date: dateStr,
+                shiftId: null,
+                startTime: '',
+                endTime: '',
+                startOdometer: '',
+                endOdometer: '',
+                totalDistance: 0,
+                duration: 0,
+                status: '',
+                hasData: false
+              });
+            }
+          }
+
+          resolve(monthlyData);
+        }
+      );
+    });
+  },
+
+  // Update existing shift entry
+  updateShiftEntry: (shiftId, shiftData) => {
+    return new Promise((resolve, reject) => {
+      const { startTime, endTime, startOdometer, endOdometer } = shiftData;
+      
+      // Get the existing shift to get the date
+      db.get('SELECT * FROM shifts WHERE id = ?', [shiftId], (err, shift) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        if (!shift) {
+          reject(new Error('Shift not found'));
+          return;
+        }
+
+        const shiftDate = shift.clock_in_time.split(' ')[0];
+        const clockInDateTime = `${shiftDate} ${startTime}`;
+        const clockOutDateTime = endTime ? `${shiftDate} ${endTime}` : null;
+        
+        // Calculate duration if both times are provided
+        let duration = null;
+        let totalDistance = null;
+        
+        if (startTime && endTime && startOdometer && endOdometer) {
+          const startDateTime = new Date(`${shiftDate}T${startTime}`);
+          const endDateTime = new Date(`${shiftDate}T${endTime}`);
+          duration = Math.round((endDateTime - startDateTime) / (1000 * 60));
+          totalDistance = endOdometer - startOdometer;
+        }
+
+        db.run(
+          `UPDATE shifts 
+           SET clock_in_time = ?, 
+               clock_out_time = ?, 
+               start_odometer = ?, 
+               end_odometer = ?,
+               total_distance = ?,
+               shift_duration_minutes = ?,
+               status = ?,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = ?`,
+          [
+            clockInDateTime, 
+            clockOutDateTime, 
+            startOdometer, 
+            endOdometer,
+            totalDistance,
+            duration,
+            clockOutDateTime ? 'completed' : 'active',
+            shiftId
+          ],
+          function(err) {
+            if (err) reject(err);
+            else resolve(this.changes);
+          }
+        );
+      });
+    });
+  },
+
+  // Create new shift entry
+  createShiftEntry: (driverId, date, shiftData) => {
+    return new Promise((resolve, reject) => {
+      const { startTime, endTime, startOdometer, endOdometer } = shiftData;
+      
+      if (!startTime || !startOdometer) {
+        reject(new Error('Start time and start odometer are required'));
+        return;
+      }
+
+      const clockInDateTime = `${date} ${startTime}`;
+      const clockOutDateTime = endTime ? `${date} ${endTime}` : null;
+      
+      // Calculate duration if both times are provided
+      let duration = null;
+      let totalDistance = null;
+      
+      if (startTime && endTime && startOdometer && endOdometer) {
+        const startDateTime = new Date(`${date}T${startTime}`);
+        const endDateTime = new Date(`${date}T${endTime}`);
+        duration = Math.round((endDateTime - startDateTime) / (1000 * 60));
+        totalDistance = endOdometer - startOdometer;
+      }
+
+      db.run(
+        `INSERT INTO shifts (driver_id, clock_in_time, clock_out_time, start_odometer, end_odometer, total_distance, shift_duration_minutes, status) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          driverId, 
+          clockInDateTime, 
+          clockOutDateTime, 
+          startOdometer, 
+          endOdometer,
+          totalDistance,
+          duration,
+          clockOutDateTime ? 'completed' : 'active'
+        ],
+        function(err) {
+          if (err) reject(err);
+          else resolve(this.lastID);
+        }
+      );
+    });
+  },
+
+  // Delete shift entry
+  deleteShiftEntry: (shiftId) => {
+    return new Promise((resolve, reject) => {
+      db.run(
+        'DELETE FROM shifts WHERE id = ?',
+        [shiftId],
+        function(err) {
+          if (err) reject(err);
+          else resolve(this.changes);
+        }
+      );
+    });
   }
 };
 
