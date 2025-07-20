@@ -692,19 +692,22 @@ main {
 }
 
 .btn-small {
-    padding: 6px 12px;
-    font-size: 12px;
-    border: 1px solid #2196F3;
-    background: white;
-    color: #2196F3;
-    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.8em;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 3px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background-color 0.2s;
 }
 
 .btn-small:hover {
-    background: #2196F3;
-    color: white;
+    background: #0056b3;
+}
+
+.btn-small:active {
+    background: #004085;
 }
 
 /* Analytics Cards */

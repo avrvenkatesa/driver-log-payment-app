@@ -615,7 +615,12 @@ class DriverApp {
                             <div class="payroll-section">
                                 <h4>${this.translator.t('paymentBreakdown')}:</h4>
                                 <p>${this.translator.t('baseSalary')}: ₹${payroll.baseSalary.toLocaleString()}</p>
-                                <p>${this.translator.t('overtimePay')}: ₹${payroll.overtimePay.toLocaleString()}</p>
+                                <p>${this.translator.t('overtimePay')}: ₹${payroll.overtimePay.toLocaleString()} 
+                                    <button id="show-overtime-details-btn" class="btn-small" style="margin-left: 10px;">Show Details</button>
+                                </p>
+                                <div id="overtime-details" style="display: none; margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
+                                    <!-- Overtime details will be populated here -->
+                                </div>
                                 <p>${this.translator.t('fuelAllowance')}: ₹${payroll.fuelAllowance.toLocaleString()}</p>
                                 <hr style="margin: 10px 0;">
                                 <p><strong>${this.translator.t('grossPay')}: ₹${payroll.grossPay.toLocaleString()}</strong></p>
@@ -630,6 +635,12 @@ class DriverApp {
                         </div>
                     </div>
                 `;
+
+                // Set up overtime details button event listener
+                const overtimeDetailsBtn = document.getElementById('show-overtime-details-btn');
+                if (overtimeDetailsBtn) {
+                    overtimeDetailsBtn.addEventListener('click', () => this.toggleOvertimeDetails(payroll));
+                }
             } else {
                 shiftsDiv.innerHTML = `
                     <div class="shifts-card">
@@ -641,6 +652,146 @@ class DriverApp {
         } catch (error) {
             this.showMessage(this.translator.t('failedToLoadPayroll'), 'error');
         }
+    }
+
+    toggleOvertimeDetails(payroll) {
+        const detailsDiv = document.getElementById('overtime-details');
+        const button = document.getElementById('show-overtime-details-btn');
+        
+        if (detailsDiv.style.display === 'none') {
+            // Show details
+            this.displayOvertimeDetails(payroll);
+            detailsDiv.style.display = 'block';
+            button.textContent = 'Hide Details';
+        } else {
+            // Hide details
+            detailsDiv.style.display = 'none';
+            button.textContent = 'Show Details';
+        }
+    }
+
+    displayOvertimeDetails(payroll) {
+        const detailsDiv = document.getElementById('overtime-details');
+        
+        if (!payroll.shiftsDetails || payroll.shiftsDetails.length === 0) {
+            detailsDiv.innerHTML = '<p>No overtime details available.</p>';
+            return;
+        }
+
+        // Group shifts by date and calculate overtime for each
+        const overtimeByDate = {};
+        const OVERTIME_RATE = 100; // ₹100 per hour
+
+        payroll.shiftsDetails.forEach(shift => {
+            const shiftDate = shift.clock_in_time.split(' ')[0]; // Get date part
+            const clockInTime = new Date(shift.clock_in_time);
+            const clockOutTime = new Date(shift.clock_out_time);
+            
+            if (!clockOutTime || !shift.shift_duration_minutes) return;
+
+            const shiftDuration = shift.shift_duration_minutes;
+            let overtimeMinutes = 0;
+            let overtimeReason = [];
+
+            // Check if it's Sunday (overtime)
+            const dayOfWeek = clockInTime.getDay();
+            if (dayOfWeek === 0) {
+                overtimeMinutes += shiftDuration;
+                overtimeReason.push('Sunday work');
+            } else {
+                // Check for early morning overtime (before 8 AM)
+                const startHour = clockInTime.getHours();
+                if (startHour < 8) {
+                    const earlyMinutes = (8 - startHour) * 60 - clockInTime.getMinutes();
+                    const earlyOT = Math.min(earlyMinutes, shiftDuration);
+                    if (earlyOT > 0) {
+                        overtimeMinutes += earlyOT;
+                        overtimeReason.push(`Early start (before 8 AM): ${Math.round(earlyOT / 60 * 10) / 10}h`);
+                    }
+                }
+
+                // Check for late evening overtime (after 8 PM)
+                const endHour = clockOutTime.getHours();
+                if (endHour >= 20 || (endHour === 19 && clockOutTime.getMinutes() > 0)) {
+                    const lateStart = new Date(clockOutTime);
+                    lateStart.setHours(20, 0, 0, 0);
+                    if (clockOutTime > lateStart) {
+                        const lateMinutes = (clockOutTime - lateStart) / (1000 * 60);
+                        overtimeMinutes += lateMinutes;
+                        overtimeReason.push(`Late work (after 8 PM): ${Math.round(lateMinutes / 60 * 10) / 10}h`);
+                    }
+                }
+            }
+
+            if (overtimeMinutes > 0) {
+                if (!overtimeByDate[shiftDate]) {
+                    overtimeByDate[shiftDate] = {
+                        totalOvertimeMinutes: 0,
+                        shifts: []
+                    };
+                }
+                
+                const overtimeHours = overtimeMinutes / 60;
+                const overtimePay = overtimeHours * OVERTIME_RATE;
+                
+                overtimeByDate[shiftDate].totalOvertimeMinutes += overtimeMinutes;
+                overtimeByDate[shiftDate].shifts.push({
+                    shiftId: shift.id,
+                    startTime: this.formatToIST(shift.clock_in_time),
+                    endTime: this.formatToIST(shift.clock_out_time),
+                    overtimeMinutes: Math.round(overtimeMinutes),
+                    overtimeHours: Math.round(overtimeHours * 100) / 100,
+                    overtimePay: Math.round(overtimePay * 100) / 100,
+                    reason: overtimeReason.join(', ')
+                });
+            }
+        });
+
+        // Generate HTML for overtime details
+        const sortedDates = Object.keys(overtimeByDate).sort();
+        
+        if (sortedDates.length === 0) {
+            detailsDiv.innerHTML = '<p>No overtime work found for this period.</p>';
+            return;
+        }
+
+        let detailsHTML = '<h5>Overtime Work Details:</h5>';
+        let totalOvertimePay = 0;
+
+        sortedDates.forEach(date => {
+            const dayData = overtimeByDate[date];
+            const dayOvertimeHours = Math.round(dayData.totalOvertimeMinutes / 60 * 100) / 100;
+            const dayOvertimePay = dayOvertimeHours * OVERTIME_RATE;
+            totalOvertimePay += dayOvertimePay;
+
+            detailsHTML += `
+                <div style="margin-bottom: 15px; padding: 8px; background: white; border-radius: 3px; border-left: 3px solid #007bff;">
+                    <strong>${date}</strong> - ${dayOvertimeHours}h overtime (₹${Math.round(dayOvertimePay).toLocaleString()})
+                    <div style="margin-top: 5px; font-size: 0.9em;">
+            `;
+
+            dayData.shifts.forEach(shift => {
+                detailsHTML += `
+                    <div style="margin-left: 10px; margin-bottom: 3px;">
+                        • Shift #${shift.shiftId}: ${shift.startTime} - ${shift.endTime}<br>
+                        &nbsp;&nbsp;Overtime: ${shift.overtimeHours}h (₹${shift.overtimePay.toLocaleString()}) - ${shift.reason}
+                    </div>
+                `;
+            });
+
+            detailsHTML += `
+                    </div>
+                </div>
+            `;
+        });
+
+        detailsHTML += `
+            <div style="margin-top: 10px; padding: 8px; background: #e9ecef; border-radius: 3px; font-weight: bold;">
+                Total Overtime Pay: ₹${Math.round(totalOvertimePay).toLocaleString()}
+            </div>
+        `;
+
+        detailsDiv.innerHTML = detailsHTML;
     }
 
     async createTestData() {
