@@ -640,7 +640,12 @@ class DriverApp {
                                 <div id="overtime-details" style="display: none; margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
                                     <!-- Overtime details will be populated here -->
                                 </div>
-                                <p>Fuel Allowance: ₹${payroll.fuelAllowance.toLocaleString()} <small>(${payroll.daysWorked} days worked)</small></p>
+                                <p>Fuel Allowance: ₹${payroll.fuelAllowance.toLocaleString()} <small>(${payroll.daysWorked} days worked)</small>
+                                    <button id="show-fuel-details-btn" class="btn-small" style="margin-left: 10px;">Show Details</button>
+                                </p>
+                                <div id="fuel-details" style="display: none; margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
+                                    <!-- Fuel allowance details will be populated here -->
+                                </div>
                                 <hr style="margin: 10px 0;">
                                 <p><strong>${this.translator.t('grossPay')}: ₹${payroll.grossPay.toLocaleString()}</strong></p>
                             </div>
@@ -659,6 +664,12 @@ class DriverApp {
                 const overtimeDetailsBtn = document.getElementById('show-overtime-details-btn');
                 if (overtimeDetailsBtn) {
                     overtimeDetailsBtn.addEventListener('click', () => this.toggleOvertimeDetails(payroll));
+                }
+
+                // Set up fuel allowance details button event listener
+                const fuelDetailsBtn = document.getElementById('show-fuel-details-btn');
+                if (fuelDetailsBtn) {
+                    fuelDetailsBtn.addEventListener('click', () => this.toggleFuelDetails(payroll));
                 }
             } else {
                 shiftsDiv.innerHTML = `
@@ -810,6 +821,118 @@ class DriverApp {
         } catch (error) {
             this.showMessage(this.translator.t('failedToLoadLeaveRequests'), 'error');
         }
+    }
+
+    toggleFuelDetails(payroll) {
+        const detailsDiv = document.getElementById('fuel-details');
+        const button = document.getElementById('show-fuel-details-btn');
+        
+        if (detailsDiv.style.display === 'none') {
+            // Show details
+            this.displayFuelDetails(payroll);
+            detailsDiv.style.display = 'block';
+            button.textContent = 'Hide Details';
+        } else {
+            // Hide details
+            detailsDiv.style.display = 'none';
+            button.textContent = 'Show Details';
+        }
+    }
+
+    displayFuelDetails(payroll) {
+        const detailsDiv = document.getElementById('fuel-details');
+        
+        if (!payroll.shiftsDetails || payroll.shiftsDetails.length === 0) {
+            detailsDiv.innerHTML = '<p>No fuel allowance details available.</p>';
+            return;
+        }
+
+        // Group shifts by date to show daily fuel allowance
+        const workDaysByDate = {};
+        const FUEL_ALLOWANCE_PER_DAY = 33.30; // ₹33.30 per day
+
+        payroll.shiftsDetails.forEach(shift => {
+            const shiftDate = shift.clock_in_time.split(' ')[0]; // Get date part
+            
+            if (!workDaysByDate[shiftDate]) {
+                workDaysByDate[shiftDate] = {
+                    shifts: [],
+                    totalDistance: 0
+                };
+            }
+            
+            workDaysByDate[shiftDate].shifts.push({
+                shiftId: shift.id,
+                startTime: this.formatToIST(shift.clock_in_time),
+                endTime: this.formatToIST(shift.clock_out_time),
+                distance: shift.total_distance || 0
+            });
+            
+            workDaysByDate[shiftDate].totalDistance += shift.total_distance || 0;
+        });
+
+        // Generate HTML for fuel allowance details
+        const sortedDates = Object.keys(workDaysByDate).sort();
+        
+        if (sortedDates.length === 0) {
+            detailsDiv.innerHTML = '<p>No work days found for this period.</p>';
+            return;
+        }
+
+        let detailsHTML = '<h5>Fuel Allowance Details:</h5>';
+        let totalFuelAllowance = 0;
+
+        detailsHTML += `
+            <table class="data-table" style="margin-top: 10px; font-size: 0.9em;">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Shifts</th>
+                        <th>Total Distance</th>
+                        <th>Fuel Allowance</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${sortedDates.map(date => {
+                        const dayData = workDaysByDate[date];
+                        const dailyFuelAllowance = FUEL_ALLOWANCE_PER_DAY;
+                        totalFuelAllowance += dailyFuelAllowance;
+                        
+                        const shiftsDetail = dayData.shifts.map(shift => 
+                            `#${shift.shiftId} (${shift.startTime} - ${shift.endTime}): ${shift.distance}km`
+                        ).join('<br>');
+                        
+                        return `
+                            <tr>
+                                <td>${date}</td>
+                                <td>${dayData.shifts.length}</td>
+                                <td>${dayData.totalDistance} km</td>
+                                <td>₹${dailyFuelAllowance.toLocaleString()}</td>
+                                <td><small>${shiftsDetail}</small></td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+                <tfoot>
+                    <tr style="background: #f8f9fa; font-weight: bold;">
+                        <td><strong>Total Work Days</strong></td>
+                        <td><strong>${sortedDates.length}</strong></td>
+                        <td><strong>${Object.values(workDaysByDate).reduce((sum, day) => sum + day.totalDistance, 0)} km</strong></td>
+                        <td><strong>₹${Math.round(totalFuelAllowance).toLocaleString()}</strong></td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        `;
+
+        detailsHTML += `
+            <div style="margin-top: 10px; padding: 8px; background: #e3f2fd; border-radius: 4px; font-size: 0.9em;">
+                <strong>Note:</strong> Fuel allowance is ₹${FUEL_ALLOWANCE_PER_DAY} per working day, regardless of distance or number of shifts per day.
+            </div>
+        `;
+
+        detailsDiv.innerHTML = detailsHTML;
     }
 
     displayOvertimeDetails(payroll) {
@@ -1486,7 +1609,10 @@ class DriverApp {
                                     ₹${payroll.overtimePay.toLocaleString()}
                                     ${payroll.overtimePay > 0 ? `<button id="admin-show-overtime-details-btn-${index}" class="btn-small" style="margin-left: 10px;">Show Details</button>` : ''}
                                 </td>
-                                <td>₹${payroll.fuelAllowance.toLocaleString()}</td>
+                                <td>
+                                    ₹${payroll.fuelAllowance.toLocaleString()}
+                                    ${payroll.fuelAllowance > 0 ? `<button id="admin-show-fuel-details-btn-${index}" class="btn-small" style="margin-left: 10px;">Show Details</button>` : ''}
+                                </td>
                                 <td><strong>₹${payroll.grossPay.toLocaleString()}</strong></td>
                             </tr>
                             ${payroll.overtimePay > 0 ? `
@@ -1494,6 +1620,15 @@ class DriverApp {
                                 <td colspan="9">
                                     <div id="admin-overtime-details-${index}" style="padding: 10px; background: #f5f5f5; border-radius: 5px;">
                                         <!-- Overtime details will be populated here -->
+                                    </div>
+                                </td>
+                            </tr>
+                            ` : ''}
+                            ${payroll.fuelAllowance > 0 ? `
+                            <tr id="admin-fuel-details-row-${index}" style="display: none;">
+                                <td colspan="9">
+                                    <div id="admin-fuel-details-${index}" style="padding: 10px; background: #f5f5f5; border-radius: 5px;">
+                                        <!-- Fuel allowance details will be populated here -->
                                     </div>
                                 </td>
                             </tr>
@@ -1526,6 +1661,14 @@ class DriverApp {
                     overtimeDetailsBtn.addEventListener('click', () => this.toggleAdminOvertimeDetails(payroll, index));
                 }
             }
+            
+            // Set up fuel allowance details button event listeners
+            if (payroll.fuelAllowance > 0) {
+                const fuelDetailsBtn = document.getElementById(`admin-show-fuel-details-btn-${index}`);
+                if (fuelDetailsBtn) {
+                    fuelDetailsBtn.addEventListener('click', () => this.toggleAdminFuelDetails(payroll, index));
+                }
+            }
         });
     }
 
@@ -1543,6 +1686,118 @@ class DriverApp {
             detailsRow.style.display = 'none';
             button.textContent = 'Show Details';
         }
+    }
+
+    toggleAdminFuelDetails(payroll, index) {
+        const detailsRow = document.getElementById(`admin-fuel-details-row-${index}`);
+        const button = document.getElementById(`admin-show-fuel-details-btn-${index}`);
+        
+        if (detailsRow.style.display === 'none') {
+            // Show details
+            this.displayAdminFuelDetails(payroll, index);
+            detailsRow.style.display = 'table-row';
+            button.textContent = 'Hide Details';
+        } else {
+            // Hide details
+            detailsRow.style.display = 'none';
+            button.textContent = 'Show Details';
+        }
+    }
+
+    displayAdminFuelDetails(payroll, index) {
+        const detailsDiv = document.getElementById(`admin-fuel-details-${index}`);
+        
+        if (!payroll.shiftsDetails || payroll.shiftsDetails.length === 0) {
+            detailsDiv.innerHTML = '<p>No fuel allowance details available.</p>';
+            return;
+        }
+
+        // Group shifts by date to show daily fuel allowance
+        const workDaysByDate = {};
+        const FUEL_ALLOWANCE_PER_DAY = 33.30; // ₹33.30 per day
+
+        payroll.shiftsDetails.forEach(shift => {
+            const shiftDate = shift.clock_in_time.split(' ')[0]; // Get date part
+            
+            if (!workDaysByDate[shiftDate]) {
+                workDaysByDate[shiftDate] = {
+                    shifts: [],
+                    totalDistance: 0
+                };
+            }
+            
+            workDaysByDate[shiftDate].shifts.push({
+                shiftId: shift.id,
+                startTime: this.formatToIST(shift.clock_in_time),
+                endTime: this.formatToIST(shift.clock_out_time),
+                distance: shift.total_distance || 0
+            });
+            
+            workDaysByDate[shiftDate].totalDistance += shift.total_distance || 0;
+        });
+
+        // Generate HTML for fuel allowance details
+        const sortedDates = Object.keys(workDaysByDate).sort();
+        
+        if (sortedDates.length === 0) {
+            detailsDiv.innerHTML = '<p>No work days found for this period.</p>';
+            return;
+        }
+
+        let detailsHTML = '<h5>Fuel Allowance Details:</h5>';
+        let totalFuelAllowance = 0;
+
+        detailsHTML += `
+            <table class="data-table" style="margin-top: 10px; font-size: 0.9em;">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Shifts</th>
+                        <th>Total Distance</th>
+                        <th>Fuel Allowance</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${sortedDates.map(date => {
+                        const dayData = workDaysByDate[date];
+                        const dailyFuelAllowance = FUEL_ALLOWANCE_PER_DAY;
+                        totalFuelAllowance += dailyFuelAllowance;
+                        
+                        const shiftsDetail = dayData.shifts.map(shift => 
+                            `#${shift.shiftId} (${shift.startTime} - ${shift.endTime}): ${shift.distance}km`
+                        ).join('<br>');
+                        
+                        return `
+                            <tr>
+                                <td>${date}</td>
+                                <td>${dayData.shifts.length}</td>
+                                <td>${dayData.totalDistance} km</td>
+                                <td>₹${dailyFuelAllowance.toLocaleString()}</td>
+                                <td><small>${shiftsDetail}</small></td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+                <tfoot>
+                    <tr style="background: #f8f9fa; font-weight: bold;">
+                        <td><strong>Total Work Days</strong></td>
+                        <td><strong>${sortedDates.length}</strong></td>
+                        <td><strong>${Object.values(workDaysByDate).reduce((sum, day) => sum + day.totalDistance, 0)} km</strong></td>
+                        <td><strong>₹${Math.round(totalFuelAllowance).toLocaleString()}</strong></td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        `;
+
+        detailsHTML += `
+            <div style="margin-top: 10px; padding: 8px; background: #e3f2fd; border-radius: 4px; font-size: 0.9em;">
+                <strong>Note:</strong> Fuel allowance is ₹${FUEL_ALLOWANCE_PER_DAY} per working day, regardless of distance or number of shifts per day.
+            </div>
+        `;
+
+        detailsDiv.innerHTML = detailsHTML;
     }
 
     displayAdminOvertimeDetails(payroll, index) {
