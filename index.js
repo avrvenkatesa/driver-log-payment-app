@@ -31,7 +31,13 @@ app.use((req, res, next) => {
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static('public'));
+app.use(express.static('public', {
+  setHeaders: (res, path) => {
+    if (path.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript');
+    }
+  }
+}));
 
 // API Routes
 app.get('/api/health', (req, res) => {
